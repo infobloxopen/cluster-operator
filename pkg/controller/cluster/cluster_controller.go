@@ -2,16 +2,16 @@ package cluster
 
 import (
 	"context"
-
+	
 	clusteroperatorv1alpha1 "github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+	"github.com/seizadi/cluster-operator/kops"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -77,8 +77,7 @@ type ReconcileCluster struct {
 
 // Reconcile reads that state of the cluster for a Cluster object and makes changes based on the state read
 // and what is in the Cluster.Spec
-// TODO(user): Modify this Reconcile function to implement your Controller logic.  This example creates
-// a Pod as an example
+//
 // Note:
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
@@ -99,55 +98,84 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set Cluster instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	
+	// If no phase set default to pending for the initial phase
+	if instance.Status.Phase == "" {
+		instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 	}
-
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+	
+	
+	// Set Cluster instance as the owner and controller for AWS VPC Resource
+	// if err := controllerutil.SetControllerReference(instance, vpc, r.scheme); err != nil {
+	//	return reconcile.Result{}, err
+	//}
+	
+	// Run State Machine
+	// PENDING -> SETUP -> DONE
+	switch instance.Status.Phase {
+	case clusteroperatorv1alpha1.ClusterPending:
+		reqLogger.Info("Phase: PENDING")
+		result, err := kops.CreateCluster(GetKopsConfig(instance.Name))
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-
-		// Pod created successfully - don't requeue
+		reqLogger.Info("Cluster Created", result)
+		instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
+	case clusteroperatorv1alpha1.ClusterSetup:
+		reqLogger.Info("Phase: SETUP")
+		status, err := kops.ValidateCluster(GetKopsConfig(instance.Name))
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		
+		instance.Status.KopsStatus = clusteroperatorv1alpha1.KopsStatus {}
+		if len(status.Failures) > 0 {
+			instance.Status.KopsStatus.Failures = status.Failures
+			reqLogger.Info("Cluster Not Ready")
+		} else if len(status.Nodes) > 0 {
+			instance.Status.KopsStatus.Nodes = status.Nodes
+			reqLogger.Info("Cluster Created")
+			instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
+		} else {
+			// FIXME - If we get this state try validate again!!!
+			reqLogger.Info("Validate Returned Unexpected Result")
+		}
+	case clusteroperatorv1alpha1.ClusterDone:
+		reqLogger.Info("Phase: DONE")
 		return reconcile.Result{}, nil
-	} else if err != nil {
+	default:
+		reqLogger.Info("NOP")
+		return reconcile.Result{}, nil
+	}
+	
+	// Update the At instance, setting the status to the respective phase:
+	err = r.Status().Update(context.TODO(), instance)
+	if err != nil {
 		return reconcile.Result{}, err
 	}
-
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	
+	if instance.Status.Phase == clusteroperatorv1alpha1.ClusterSetup {
+		// TODO - Set to time.Duration depending on back-off behavior
+		//return reconcile.Result{RequeueAfter: time.Minute}, nil
+		return reconcile.Result{Requeue: true}, nil
+	}
+	
+	// Don't requeue. We should get called to reconcile when the CR changes.
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *clusteroperatorv1alpha1.Cluster) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
-	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
+// Get Kops Config Object
+func GetKopsConfig(name string) clusteroperatorv1alpha1.KopsConfig {
+	// Define a new Kops Cluster Config object
+	return clusteroperatorv1alpha1.KopsConfig{
+		Name: name + ".soheil.belamaric.com",
+		MasterCount: 1,
+		MasterEc2: "t2.micro",
+		WorkerCount: 2,
+		WorkerEc2: "t2.micro",
+		StateStore: "s3://kops.state.seizadi.infoblox.com",
+		Vpc: "vpc-0a75b33895655b46a",
+		Zones: [] string {"us-east-2a", "us-east-2b"},
 	}
 }
+
