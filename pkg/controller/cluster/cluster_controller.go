@@ -148,7 +148,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, nil
 	}
 	
-	// Update the At instance, setting the status to the respective phase:
+	// Update the Cluster instance, setting the status to the respective phase:
 	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		return reconcile.Result{}, err
