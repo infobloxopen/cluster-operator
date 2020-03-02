@@ -48,6 +48,34 @@ regenerate code using code-gen captured in
 You can custom validation using
 [kubebuilder tags](https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html)
 
+### Local Testing
+
+#### Initial Setup
+```bash
+kind create cluster
+kubectl apply -f deploy/crds/cluster-operator.seizadi.github.com_clusters_crd.yaml
+kubectl get crds
+```
+```bash
+kubectl create ns kops && kubectl config set-context $(kubectl config current-context) --namespace=kops
+```
+
+#### Change & Debug
+If changes to types
+```bash
+operator-sdk generate k8s
+```
+
+Build and Run
+```bash
+OPERATOR_NAME=clusterop operator-sdk run --local --namespace "kops"
+```
+
+Test to see if working
+```bash
+kubectl apply -f deploy/crds/cluster-operator.seizadi.github.com_v1alpha1_cluster_cr.yaml
+```
+
 
 ## Kops
 The cluster-operator uses kops for creating clusters on AWS. The base requirements are:
@@ -108,8 +136,9 @@ kops create cluster \
 --master-size=t2.micro \
 --node-size=t2.micro \
 --zones=us-east-2a,us-east-2b \
+--ssh-key-name=seizadi_aws \
 --name=${KOPS_CLUSTER_NAME} \
---master-count 1 
+--master-count 1
 ```
 
 This creates a desired state, following to create it, or you can do the same
@@ -134,7 +163,7 @@ kops validate cluster -o json
 ```
 When things are OK:
 ```bash
-$ kops validate cluster -o json | jq
+kops validate cluster -o json | jq
 ```
 ```json
 {
@@ -169,10 +198,62 @@ To delete cluster when you are done:
 kops delete cluster  --yes
 ```
 
-# Kops Issues
+### Kops Container
+I created a kops container to run the commands:
+```bash
+docker run \
+ -e AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
+ -e AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
+ -e KOPS_CLUSTER_NAME=cluster1.soheil.belamaric.com \
+ -e KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com \
+ soheileizadi/kops:v1.0 create cluster \
+ --vpc=vpc-0a75b33895655b46a \
+ --node-count=2 \
+ --master-size=t2.micro \
+ --node-size=t2.micro \
+ --ssh-key-name=seizadi_aws \
+ --zones=us-east-2a,us-east-2b \
+ --master-count 1 
+```
+```bash
+docker run \
+ -e AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
+ -e AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
+ -e KOPS_CLUSTER_NAME=cluster1.soheil.belamaric.com \
+ -e KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com \
+ soheileizadi/kops:v1.0 validate cluster -o json
+```
 
+### Kops Issues
+
+#### Public DNS
 You need public DNS address to get any progress since you need to be able to access
 the Cluster, you can may be get around this by running Kops in an EC2 instance in the
 boundary but makes development difficult. I started with
 cluster1.seizadi-kops.local private DNS with Kops option '--dns private'
 moved to cluster1.soheil.belamaric.com for public interface.
+
+There is a gossip-based discovery DNS option for the cluster name.
+The only requirement to enable this is to have a cluster ending in k8s.local.
+
+#### SSH Keys
+The k8s nodes are based on EC2 instances and kops will need SSH keys to setup access
+to them, so Kops needs SSH keys. It will normally find them under (~/.ssh/id_rsa.pub), or
+you can set them with option --ssh-public-key which points to a specific location for the
+key. There is also secret command, in the example below we create a new ssh public 
+key called admin.
+
+```bash
+  kops create secret sshpublickey admin -i ~/.ssh/id_rsa.pub \
+  --name k8s-cluster.example.com --state s3://example.com
+```
+
+There is a better option 
+[--ssh-key-name that was added recently](https://github.com/kubernetes/kops/pull/6886), 
+it allows you to use AWS SSH keys insead so that they are managed outside of the Kops and
+more secure. The downside is that it is not a command line parameter only set in the
+Cluster Spec so requires yaml file.
+
+You should consider [AWS System Manager](https://aws.amazon.com/systems-manager/), there
+will not be any SSH keys or SSH Port open on EC2 so a better security profile.
+There is an option to specify [no SSH Key](https://github.com/kubernetes/kops/pull/7096).

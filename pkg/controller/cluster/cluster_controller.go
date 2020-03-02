@@ -115,7 +115,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	switch instance.Status.Phase {
 	case clusteroperatorv1alpha1.ClusterPending:
 		reqLogger.Info("Phase: PENDING")
-		result, err := kops.CreateCluster(GetKopsConfig(instance.Name))
+		result, err := kops.CreateCluster(GetKopsConfig(instance.Spec.Name))
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -123,7 +123,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 	case clusteroperatorv1alpha1.ClusterSetup:
 		reqLogger.Info("Phase: SETUP")
-		status, err := kops.ValidateCluster(GetKopsConfig(instance.Name))
+		status, err := kops.ValidateCluster(GetKopsConfig(instance.Spec.Name))
 		if err != nil {
 			return reconcile.Result{}, err
 		}
@@ -149,7 +149,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 	
 	// Update the At instance, setting the status to the respective phase:
-	err = r.Status().Update(context.TODO(), instance)
+	err = r.client.Status().Update(context.TODO(), instance)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
