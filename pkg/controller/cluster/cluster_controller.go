@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/seizadi/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
@@ -84,14 +83,10 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	reqLogger.Info("Reconciling Cluster")
 	// Fetch the Cluster instance
 	instance := &clusteroperatorv1alpha1.Cluster{}
-	fmt.Print("modify get \n")
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.go"
-	fmt.Print("\n\n")
-	fmt.Print(instance.Status)
-	fmt.Print("\n\n")
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -105,16 +100,13 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	//The cluster is not waiting for deletion, so handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
-		fmt.Print("im in the normal \n")
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
-			fmt.Print("modify 1 \n")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 		}
 
 		// Add the finalizer and update the object
 		if !contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
-			fmt.Print("modify 2 \n")
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, clusterFinalizer)
 		}
 
@@ -128,7 +120,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				return reconcile.Result{}, err
 			}
 			reqLogger.Info("Cluster Created")
-			fmt.Print("modify 3 \n")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
@@ -136,17 +127,13 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-			fmt.Print("modify 4 \n")
 			instance.Status.KopsStatus = clusteroperatorv1alpha1.KopsStatus{}
 			if len(status.Failures) > 0 {
-				fmt.Print("modify 5 \n")
 				instance.Status.KopsStatus.Failures = status.Failures
 				reqLogger.Info("Cluster Not Ready")
 			} else if len(status.Nodes) > 0 {
-				fmt.Print("modify 6 \n")
 				instance.Status.KopsStatus.Nodes = status.Nodes
 				reqLogger.Info("Cluster Created")
-				fmt.Print("modify 7 \n")
 				instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
 			} else {
 				// FIXME - If we get this state try validate again!!!
@@ -161,11 +148,9 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 
 		// Update the Cluster instance, setting the status to the respective phase:
-		fmt.Print("update 1 \n")
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
-		fmt.Print("update 2 \n")
 		if err := r.client.Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
@@ -188,9 +173,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 
 		// remove our finalizer from the list and update it.
-		fmt.Print("modify 8 \n")
 		instance.ObjectMeta.Finalizers = remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
-		fmt.Print("update 3 \n")
+
 		if err := r.client.Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
