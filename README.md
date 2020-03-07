@@ -42,10 +42,10 @@ Ater making changes run:
 ```bash
 operator-sdk generate k8s
 ```
-regenerate code using code-gen captured in
-[]()
+regenerate code using code-gen code captured in
+[zz_generated.deepcopy.go](https://github.com/seizadi/cluster-operator/blob/master/pkg/apis/clusteroperator/v1alpha1/zz_generated.deepcopy.go)
 
-You can custom validation using
+You can do custom validation using
 [kubebuilder tags](https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html)
 
 ### Local Testing

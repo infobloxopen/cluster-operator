@@ -2,24 +2,24 @@ package cluster
 
 import (
 	"context"
-
+	
 	"github.com/seizadi/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-
+	
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-
+	
+	"github.com/seizadi/cluster-operator/utils"
 	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
-	"github.com/seizadi/cluster-operator/utils"
 )
 
 var log = logf.Log.WithName("controller_cluster")
@@ -85,10 +85,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	// Fetch the Cluster instance
 	instance := &clusteroperatorv1alpha1.Cluster{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
-
-	//Finalizer name
-	clusterFinalizer := "cluster.finalizer.go"
 	if err != nil {
+		reqLogger.Info(err.Error())
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
@@ -98,8 +96,11 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
-	//The cluster is not waiting for deletion, so handle it normally
+	
+	//Finalizer name
+	clusterFinalizer := "cluster.finalizer.cluster-operator.seizadi.github.com"
+	
+	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
@@ -109,6 +110,9 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Add the finalizer and update the object
 		if !utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, clusterFinalizer)
+			if err := r.client.Update(context.TODO(), instance); err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 
 		// Run State Machine
@@ -167,15 +171,15 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-		// FIXME - If we call delete and the cluster is not present it will cause
-		// error and it will keep erroring out
 		out, err := kops.DeleteCluster(GetKopsConfig(instance.Spec.Name))
-		reqLogger.Info("Cluster Deleted")
 		reqLogger.Info(out)
 		if err != nil {
-			return reconcile.Result{}, err
+			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
+			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
+			// return reconcile.Result{}, err
 		}
-
+		
+		reqLogger.Info("Cluster Deleted")
 		// remove our finalizer from the list and update it.
 		instance.ObjectMeta.Finalizers = utils.Remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
 
