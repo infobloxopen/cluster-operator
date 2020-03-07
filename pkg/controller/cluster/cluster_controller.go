@@ -2,17 +2,17 @@ package cluster
 
 import (
 	"context"
-	
+
 	"github.com/seizadi/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	
+
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	
+
 	"github.com/seizadi/cluster-operator/utils"
 	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -96,10 +96,10 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	
+
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.seizadi.github.com"
-	
+
 	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// If no phase set default to pending for the initial phase
@@ -178,7 +178,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
 			// return reconcile.Result{}, err
 		}
-		
+
 		reqLogger.Info("Cluster Deleted")
 		// remove our finalizer from the list and update it.
 		instance.ObjectMeta.Finalizers = utils.Remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
@@ -206,4 +206,3 @@ func GetKopsConfig(name string) clusteroperatorv1alpha1.KopsConfig {
 		Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
 }
-

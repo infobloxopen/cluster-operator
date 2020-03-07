@@ -7,39 +7,39 @@ import (
 // KopsCluster defines the settings passed to Kops
 // +k8s:openapi-gen=true
 type KopsConfig struct {
-	Name string `json:"name,omitempty"`
-	MasterCount int `json:"master_count,omitempty"`
-	MasterEc2 string `json:"master_ec2,omitempty"`
-	WorkerCount int `json:"worker_count,omitempty"`
-	WorkerEc2 string `json:"worker_ec2,omitempty"`
-	StateStore string `json:"state_store,omitempty"`
-	Vpc string `json:"vpc,omitempty"`
-	Zones []string `json:"zones,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	MasterCount int      `json:"master_count,omitempty"`
+	MasterEc2   string   `json:"master_ec2,omitempty"`
+	WorkerCount int      `json:"worker_count,omitempty"`
+	WorkerEc2   string   `json:"worker_ec2,omitempty"`
+	StateStore  string   `json:"state_store,omitempty"`
+	Vpc         string   `json:"vpc,omitempty"`
+	Zones       []string `json:"zones,omitempty"`
 }
 
 // KopsFailure informs regarding reason cluster is not ready
 // +k8s:openapi-gen=true
 type KopsFailure struct {
-	Type string `json:"type,omitempty"`
-	Name string `json:"name,omitempty"`
+	Type    string `json:"type,omitempty"`
+	Name    string `json:"name,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
 // KopsNodes resports about the cluster nodes when ready
 // +k8s:openapi-gen=true
 type KopsNodes struct {
-	Name string `json:"name,omitempty"`
-	Zone string `json:"zone,omitempty"`
-	Role string `json:"role,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Zone     string `json:"zone,omitempty"`
+	Role     string `json:"role,omitempty"`
 	Hostname string `json:"hostname,omitempty"`
-	Status string `json:"status,omitempty"`
+	Status   string `json:"status,omitempty"`
 }
 
 // KopsStatus defines the status of the Kops Cluster
 // +k8s:openapi-gen=true
 type KopsStatus struct {
 	Failures []KopsFailure `json:"failures,omitempty"`
-	Nodes [] KopsNodes `json:"nodes,omitempty"`
+	Nodes    []KopsNodes   `json:"nodes,omitempty"`
 }
 
 // ClusterSpec defines the desired state of Cluster
