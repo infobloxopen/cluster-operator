@@ -59,12 +59,17 @@ type ClusterPhase string
 
 // These are the valid statuses of pods.
 const (
-	// PodPending means the Cluster has been accepted by the system, but cluster
-	// has not been completely provisioned
+	// PodPending means the Cluster has not been configured yet. We configure
+	// desired state in state store and transistion to ClusterUpdate
 	ClusterPending ClusterPhase = "Pending"
-	// Setup is set when we are provisioning the Cluster
+	// ClusterUpdate means the Cluster has been configured by the system, but cluster
+	// has not been completely been configured
+	ClusterUpdate ClusterPhase = "Update"
+	// Setup is set when we are waiting for  the Cluster to come up
+	// so that it can be used.
 	ClusterSetup ClusterPhase = "Setup"
-	// Done means that Cluster has been provisioned
+	// ClusterDone means that Cluster has been provisioned
+	// and can be used
 	ClusterDone ClusterPhase = "Done"
 )
 

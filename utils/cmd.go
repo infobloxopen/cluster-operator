@@ -54,6 +54,7 @@ func RunCmd(cmdString string) (*bytes.Buffer, error) {
 	err = cmd.Run()
 	if err != nil {
 		CopyBufferContentsToFile(errout.Bytes(), "./tmp/error.txt")
+		return &out, err
 	}
 	
 	return &out, nil

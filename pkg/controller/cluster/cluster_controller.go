@@ -111,10 +111,20 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	case clusteroperatorv1alpha1.ClusterPending:
 		reqLogger.Info("Phase: PENDING")
 		result, err := kops.CreateCluster(GetKopsConfig(instance.Spec.Name))
+		reqLogger.Info(result)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-		reqLogger.Info("Cluster Created", result)
+		reqLogger.Info("Cluster Created")
+		instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
+	case clusteroperatorv1alpha1.ClusterUpdate:
+		reqLogger.Info("Phase: UPDATE")
+		result, err := kops.UpdateCluster(GetKopsConfig(instance.Spec.Name))
+		reqLogger.Info(result)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		reqLogger.Info("Cluster Update Completed")
 		instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 	case clusteroperatorv1alpha1.ClusterSetup:
 		reqLogger.Info("Phase: SETUP")

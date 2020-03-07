@@ -14,20 +14,35 @@ func CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 	kopsCmd := "/usr/local/bin/" +
 		"kops create cluster" +
 		// FIXME - Should have
-		" --ssh-public-key=kops.pub" +
-		" --state=" + cluster.StateStore +
-		" --vpc="  + cluster.Vpc +
-		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
-		" --master-size=" + cluster.MasterEc2 +
-		" --node-size=" + cluster.WorkerEc2 +
-		" --zones=" + strings.Join(cluster.Zones, ",") +
 		" --name=" + cluster.Name +
+		" --state=" + cluster.StateStore +
+		" --ssh-public-key=kops.pub" +
+		" --vpc="  + cluster.Vpc +
 		" --master-count=" + strconv.Itoa(cluster.MasterCount) +
-		" --yes"
+		" --master-size=" + cluster.MasterEc2 +
+		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
+		" --node-size=" + cluster.WorkerEc2 +
+		" --zones=" + strings.Join(cluster.Zones, ",")
 
 	out, err := utils.RunCmd(kopsCmd)
 	if err != nil {
-		return "", err
+		return string(out.Bytes()), err
+	}
+	
+	return string(out.Bytes()), nil
+}
+
+func UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+	
+	kopsCmd := "/usr/local/bin/" +
+		"kops update cluster " +
+		" --name=" + cluster.Name +
+		" --state=" + cluster.StateStore +
+		" --yes"
+	
+	out, err := utils.RunCmd(kopsCmd)
+	if err != nil {
+		return string(out.Bytes()), err
 	}
 	
 	return string(out.Bytes()), nil
