@@ -176,7 +176,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		if err != nil {
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
 			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
-			// return reconcile.Result{}, err
+			//return reconcile.Result{}, err
 		}
 
 		reqLogger.Info("Cluster Deleted")
