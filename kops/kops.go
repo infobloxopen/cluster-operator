@@ -3,11 +3,13 @@ package kops
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 
 	clusteroperatorv1alpha1 "github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	"github.com/seizadi/cluster-operator/utils"
+	"gopkg.in/yaml.v2"
 )
 
 func CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
@@ -41,7 +43,6 @@ func DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 		" --state=" + cluster.StateStore
 
 	out, err := utils.RunCmd(kopsCmd)
-	fmt.Print("\n" + string(out.Bytes()) + "\n")
 	if err != nil {
 		return "", err
 	}
@@ -69,4 +70,31 @@ func ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperato
 
 	fmt.Println("Kops Response: ", string(out.Bytes()))
 	return status, nil
+}
+
+func GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv1alpha1.KubeConfig, error) {
+	kopsCmd := "/usr/local/bin/" +
+		"kops export kubecfg --name=" + cluster.Name +
+		" --state=" + cluster.StateStore +
+		" --kubeconfig=tmp/config"
+
+	out, err := utils.RunCmd(kopsCmd)
+	fmt.Print("\n" + string(out.Bytes()) + "\n")
+	if err != nil {
+		return clusteroperatorv1alpha1.KubeConfig{}, err
+	}
+
+	config := clusteroperatorv1alpha1.KubeConfig{}
+
+	file, err := ioutil.ReadFile("tmp/config")
+	if err != nil {
+		return clusteroperatorv1alpha1.KubeConfig{}, err
+	}
+
+	err = yaml.Unmarshal([]byte(file), &config)
+	if err != nil {
+		return clusteroperatorv1alpha1.KubeConfig{}, err
+	}
+
+	return config, nil
 }

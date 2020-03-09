@@ -103,6 +103,16 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+			config := instance.Spec.KopsConfig
+			// If KopsConfig is not defined in CR, use default
+			// TODO: Right now this only checks if the values are there. Eventually
+			// we want to use a few inputs to pull information from the CMDB or
+			// another controller that would hold the config information based on
+			// the supplied infra info
+			if config.Name == "" || config.MasterEc2 == "" || config.WorkerEc2 == "" || config.Vpc == "" ||
+				config.StateStore == "" || config.MasterCount < 1 || config.WorkerCount < 1 || len(config.Zones) < 1 {
+				instance.Spec.KopsConfig = GetKopsConfig(instance)
+			}
 		}
 
 		// Add the finalizer and update the object
@@ -115,15 +125,20 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		switch instance.Status.Phase {
 		case clusteroperatorv1alpha1.ClusterPending:
 			reqLogger.Info("Phase: PENDING")
-			_, err := kops.CreateCluster(GetKopsConfig(instance))
+			_, err := kops.CreateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 			reqLogger.Info("Cluster Created")
+			instance.Status.KubeConfig, err = kops.GetKubeConfig(instance.Spec.KopsConfig)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			reqLogger.Info("KUBECONFIG Updated")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
-			status, err := kops.ValidateCluster(GetKopsConfig(instance))
+			status, err := kops.ValidateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				return reconcile.Result{}, err
 			}

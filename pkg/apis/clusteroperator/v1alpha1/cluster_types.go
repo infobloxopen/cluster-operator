@@ -7,39 +7,70 @@ import (
 // KopsCluster defines the settings passed to Kops
 // +k8s:openapi-gen=true
 type KopsConfig struct {
-	Name string `json:"name,omitempty"`
-	MasterCount int `json:"master_count,omitempty"`
-	MasterEc2 string `json:"master_ec2,omitempty"`
-	WorkerCount int `json:"worker_count,omitempty"`
-	WorkerEc2 string `json:"worker_ec2,omitempty"`
-	StateStore string `json:"state_store,omitempty"`
-	Vpc string `json:"vpc,omitempty"`
-	Zones []string `json:"zones,omitempty"`
+	Name        string   `json:"name,omitempty"`
+	MasterCount int      `json:"master_count,omitempty"`
+	MasterEc2   string   `json:"master_ec2,omitempty"`
+	WorkerCount int      `json:"worker_count,omitempty"`
+	WorkerEc2   string   `json:"worker_ec2,omitempty"`
+	StateStore  string   `json:"state_store,omitempty"`
+	Vpc         string   `json:"vpc,omitempty"`
+	Zones       []string `json:"zones,omitempty"`
 }
 
 // KopsFailure informs regarding reason cluster is not ready
 // +k8s:openapi-gen=true
 type KopsFailure struct {
-	Type string `json:"type,omitempty"`
-	Name string `json:"name,omitempty"`
+	Type    string `json:"type,omitempty"`
+	Name    string `json:"name,omitempty"`
 	Message string `json:"message,omitempty"`
 }
 
 // KopsNodes resports about the cluster nodes when ready
 // +k8s:openapi-gen=true
 type KopsNodes struct {
-	Name string `json:"name,omitempty"`
-	Zone string `json:"zone,omitempty"`
-	Role string `json:"role,omitempty"`
+	Name     string `json:"name,omitempty"`
+	Zone     string `json:"zone,omitempty"`
+	Role     string `json:"role,omitempty"`
 	Hostname string `json:"hostname,omitempty"`
-	Status string `json:"status,omitempty"`
+	Status   string `json:"status,omitempty"`
+}
+
+// KubeConfig holds the config to access the cluster
+// +k8s:openapi-gen=true
+type KubeConfig struct {
+	APIVersion string `yaml:"apiVersion"`
+	Clusters   []struct {
+		ClusterConfig struct {
+			CertificateAuthorityData string `yaml:"certificate-authority-data"`
+			Server                   string `yaml:"server"`
+		} `yaml:"cluster"`
+		Name string `yaml:"name"`
+	} `yaml:"clusters"`
+	Contexts []struct {
+		Context struct {
+			Cluster string `yaml:"cluster"`
+			User    string `yaml:"user"`
+		} `yaml:"context"`
+		Name string `yaml:"name"`
+	} `yaml:"contexts"`
+	CurrentContext string `yaml:"current-context"`
+	Kind           string `yaml:"kind"`
+	Preferences    struct {
+	} `yaml:"preferences"`
+	Users []struct {
+		Name string `yaml:"name"`
+		User struct {
+			ClientCertificateData string `yaml:"client-certificate-data"`
+			ClientKeyData         string `yaml:"client-key-data"`
+		} `yaml:"user"`
+	} `yaml:"users"`
 }
 
 // KopsStatus defines the status of the Kops Cluster
 // +k8s:openapi-gen=true
 type KopsStatus struct {
 	Failures []KopsFailure `json:"failures,omitempty"`
-	Nodes [] KopsNodes `json:"nodes,omitempty"`
+	Nodes    []KopsNodes   `json:"nodes,omitempty"`
 }
 
 // ClusterSpec defines the desired state of Cluster
@@ -52,6 +83,8 @@ type ClusterSpec struct {
 	// definition.
 	// Cannot be updated.
 	Name string `json:"name,omitempty"`
+	// Kops Cluster Config
+	KopsConfig KopsConfig `json:"kops_config,omitempty"`
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -74,10 +107,9 @@ type ClusterStatus struct {
 	// Phase represents the state of the cluster provisioning
 	// It transitions from PENDING to DONE, we might add more states for infrastructure provisioning
 	Phase ClusterPhase `json:"phase,omitempty"`
-	// Kops Cluster Config
-	KopsConfig KopsConfig `json:"kops_config,omitempty"`
 	// Kops Cluster Status
 	KopsStatus KopsStatus `json:"kops_status,omitempty"`
+	KubeConfig KubeConfig `json:"kubeconfig,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
