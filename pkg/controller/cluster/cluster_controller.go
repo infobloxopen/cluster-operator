@@ -13,6 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 
+	"github.com/seizadi/cluster-operator/utils"
 	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -84,10 +85,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	// Fetch the Cluster instance
 	instance := &clusteroperatorv1alpha1.Cluster{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
-
-	//Finalizer name
-	clusterFinalizer := "cluster.finalizer.go"
 	if err != nil {
+		reqLogger.Info(err.Error())
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
@@ -98,7 +97,10 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	//The cluster is not waiting for deletion, so handle it normally
+	//Finalizer name
+	clusterFinalizer := "cluster.finalizer.cluster-operator.seizadi.github.com"
+
+	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
@@ -116,8 +118,11 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		}
 
 		// Add the finalizer and update the object
-		if !contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
+		if !utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, clusterFinalizer)
+			if err := r.client.Update(context.TODO(), instance); err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 
 		// Run State Machine
@@ -179,16 +184,24 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Don't requeue. We should get called to reconcile when the CR changes.
 		return reconcile.Result{}, nil
 
-	} else if contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
+	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
+<<<<<<< HEAD
 		_, err := kops.DeleteCluster(GetKopsConfig(instance))
 		reqLogger.Info("Cluster Deleted")
+=======
+		out, err := kops.DeleteCluster(GetKopsConfig(instance.Spec.Name))
+		reqLogger.Info(out)
+>>>>>>> 494d44c8095e41d1c9f9e973e733483cf22f5ff0
 		if err != nil {
-			return reconcile.Result{}, err
+			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
+			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
+			//return reconcile.Result{}, err
 		}
 
+		reqLogger.Info("Cluster Deleted")
 		// remove our finalizer from the list and update it.
-		instance.ObjectMeta.Finalizers = remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
+		instance.ObjectMeta.Finalizers = utils.Remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
 
 		if err := r.client.Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
@@ -197,12 +210,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 	// Stop reconciliation as the item is being deleted
 	return reconcile.Result{}, nil
-
-	// Set Cluster instance as the owner and controller for AWS VPC Resource
-	// if err := controllerutil.SetControllerReference(instance, vpc, r.scheme); err != nil {
-	//	return reconcile.Result{}, err
-	//}
-
 }
 
 // Get Kops Config Object
@@ -225,24 +232,4 @@ func GetKopsConfig(instance *clusteroperatorv1alpha1.Cluster) clusteroperatorv1a
 		}
 	}
 	return kops
-}
-
-// Helper functions to check and remove string from a slice of strings.
-func contains(slice []string, s string) bool {
-	for _, item := range slice {
-		if item == s {
-			return true
-		}
-	}
-	return false
-}
-
-func remove(slice []string, s string) (result []string) {
-	for _, item := range slice {
-		if item == s {
-			continue
-		}
-		result = append(result, item)
-	}
-	return
 }

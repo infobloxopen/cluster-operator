@@ -42,10 +42,10 @@ Ater making changes run:
 ```bash
 operator-sdk generate k8s
 ```
-regenerate code using code-gen captured in
-[]()
+regenerate code using code-gen code captured in
+[zz_generated.deepcopy.go](https://github.com/seizadi/cluster-operator/blob/master/pkg/apis/clusteroperator/v1alpha1/zz_generated.deepcopy.go)
 
-You can custom validation using
+You can do custom validation using
 [kubebuilder tags](https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html)
 
 ### Local Testing
@@ -75,6 +75,28 @@ Test to see if working
 ```bash
 kubectl apply -f deploy/crds/cluster-operator.seizadi.github.com_v1alpha1_cluster_cr.yaml
 ```
+
+#### Debugging
+Getting debugging to work with Delve is important, go the latest version
+```bash
+go get -u github.com/go-delve/delve 
+``` 
+If you want to run from command line you can build binary:
+```bash
+cd $GOPATH/src/github.com/go-delve/delve
+make install
+```
+Debugging with a client-go operator was easier since
+you can build the project native, but with the sdk-operator you have to build
+with delve option
+```bash
+OPERATOR_NAME=clusterop operator-sdk run --local --namespace "kops" --enable-delve
+```
+
+Then connect with remote debugger (even though you are running it local). The default
+port 2345 is what you need for the port, later if you run operator in cluster you need
+to forward the port and you will need to configure a higher number port, more on this later.
+
 
 
 ## Kops
@@ -130,15 +152,15 @@ aws ec2 attach-internet-gateway --internet-gateway-id ${INTERNET_GATEWAY_ID} --v
 ```
 ```bash
 kops create cluster \
---state=${KOPS_STATE_STORE} \
---vpc=${VPC_ID} \
---node-count=2 \
---master-size=t2.micro \
---node-size=t2.micro \
---zones=us-east-2a,us-east-2b \
---ssh-key-name=seizadi_aws \
 --name=${KOPS_CLUSTER_NAME} \
---master-count 1
+--state=${KOPS_STATE_STORE} \
+ --ssh-public-key=kops.pub \
+--vpc=${VPC_ID} \
+--master-count 1 \
+--master-size=t2.micro \
+--node-count=2 \
+--node-size=t2.micro \
+--zones=us-east-2a,us-east-2b
 ```
 
 This creates a desired state, following to create it, or you can do the same

@@ -33,6 +33,7 @@ type KopsNodes struct {
 	Role     string `json:"role,omitempty"`
 	Hostname string `json:"hostname,omitempty"`
 	Status   string `json:"status,omitempty"`
+<<<<<<< HEAD
 }
 
 // KubeConfig holds the config to access the cluster
@@ -64,6 +65,8 @@ type KubeConfig struct {
 			ClientKeyData         string `yaml:"client-key-data"`
 		} `yaml:"user"`
 	} `yaml:"users"`
+=======
+>>>>>>> 494d44c8095e41d1c9f9e973e733483cf22f5ff0
 }
 
 // KopsStatus defines the status of the Kops Cluster
@@ -92,12 +95,17 @@ type ClusterPhase string
 
 // These are the valid statuses of pods.
 const (
-	// PodPending means the Cluster has been accepted by the system, but cluster
-	// has not been completely provisioned
+	// PodPending means the Cluster has not been configured yet. We configure
+	// desired state in state store and transistion to ClusterUpdate
 	ClusterPending ClusterPhase = "Pending"
-	// Setup is set when we are provisioning the Cluster
+	// ClusterUpdate means the Cluster has been configured by the system, but cluster
+	// has not been completely been configured
+	ClusterUpdate ClusterPhase = "Update"
+	// Setup is set when we are waiting for  the Cluster to come up
+	// so that it can be used.
 	ClusterSetup ClusterPhase = "Setup"
-	// Done means that Cluster has been provisioned
+	// ClusterDone means that Cluster has been provisioned
+	// and can be used
 	ClusterDone ClusterPhase = "Done"
 )
 
