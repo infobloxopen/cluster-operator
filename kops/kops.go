@@ -26,7 +26,7 @@ func CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
 		" --node-size=" + cluster.WorkerEc2 +
 		" --zones=" + strings.Join(cluster.Zones, ",")
-
+	fmt.Print(kopsCmd)
 	out, err := utils.RunCmd(kopsCmd)
 	if err != nil {
 		return string(out.Bytes()), err

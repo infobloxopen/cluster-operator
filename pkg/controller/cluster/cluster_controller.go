@@ -113,7 +113,10 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// the supplied infra info
 			if config.Name == "" || config.MasterEc2 == "" || config.WorkerEc2 == "" || config.Vpc == "" ||
 				config.StateStore == "" || config.MasterCount < 1 || config.WorkerCount < 1 || len(config.Zones) < 1 {
-				instance.Spec.KopsConfig = GetKopsConfig(instance)
+				instance.Spec.KopsConfig = GetKopsConfig(instance.Spec.Name)
+				if err := r.client.Update(context.TODO(), instance); err != nil {
+					return reconcile.Result{}, err
+				}
 			}
 		}
 
@@ -171,9 +174,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := r.client.Update(context.TODO(), instance); err != nil {
-			return reconcile.Result{}, err
-		}
 
 		if instance.Status.Phase == clusteroperatorv1alpha1.ClusterSetup {
 			// TODO - Set to time.Duration depending on back-off behavior
@@ -186,13 +186,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-<<<<<<< HEAD
-		_, err := kops.DeleteCluster(GetKopsConfig(instance))
-		reqLogger.Info("Cluster Deleted")
-=======
 		out, err := kops.DeleteCluster(GetKopsConfig(instance.Spec.Name))
 		reqLogger.Info(out)
->>>>>>> 494d44c8095e41d1c9f9e973e733483cf22f5ff0
 		if err != nil {
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
 			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
@@ -213,23 +208,17 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 }
 
 // Get Kops Config Object
-func GetKopsConfig(instance *clusteroperatorv1alpha1.Cluster) clusteroperatorv1alpha1.KopsConfig {
-
-	var kops clusteroperatorv1alpha1.KopsConfig
-	kops = instance.Spec.KopsConfig
+func GetKopsConfig(name string) clusteroperatorv1alpha1.KopsConfig {
 
 	// Define a new Kops Cluster Config object if not specified
-	if kops.Vpc == "" {
-		return clusteroperatorv1alpha1.KopsConfig{
-			Name:        instance.Spec.Name + ".soheil.belamaric.com",
-			MasterCount: 1,
-			MasterEc2:   "t2.micro",
-			WorkerCount: 2,
-			WorkerEc2:   "t2.micro",
-			StateStore:  "s3://kops.state.seizadi.infoblox.com",
-			Vpc:         "vpc-0a75b33895655b46a",
-			Zones:       []string{"us-east-2a", "us-east-2b"},
-		}
+	return clusteroperatorv1alpha1.KopsConfig{
+		Name:        name + ".soheil.belamaric.com",
+		MasterCount: 1,
+		MasterEc2:   "t2.micro",
+		WorkerCount: 2,
+		WorkerEc2:   "t2.micro",
+		StateStore:  "s3://kops.state.seizadi.infoblox.com",
+		Vpc:         "vpc-0a75b33895655b46a",
+		Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
-	return kops
 }
