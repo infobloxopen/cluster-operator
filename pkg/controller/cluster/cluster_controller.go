@@ -115,7 +115,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		switch instance.Status.Phase {
 		case clusteroperatorv1alpha1.ClusterPending:
 			reqLogger.Info("Phase: PENDING")
-			_, err := kops.CreateCluster(GetKopsConfig(instance.Spec.Name))
+			_, err := kops.CreateCluster(GetKopsConfig(instance))
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -123,7 +123,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
-			status, err := kops.ValidateCluster(GetKopsConfig(instance.Spec.Name))
+			status, err := kops.ValidateCluster(GetKopsConfig(instance))
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -166,7 +166,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-		_, err := kops.DeleteCluster(GetKopsConfig(instance.Spec.Name))
+		_, err := kops.DeleteCluster(GetKopsConfig(instance))
 		reqLogger.Info("Cluster Deleted")
 		if err != nil {
 			return reconcile.Result{}, err
@@ -191,18 +191,25 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 }
 
 // Get Kops Config Object
-func GetKopsConfig(name string) clusteroperatorv1alpha1.KopsConfig {
-	// Define a new Kops Cluster Config object
-	return clusteroperatorv1alpha1.KopsConfig{
-		Name:        name + ".soheil.belamaric.com",
-		MasterCount: 1,
-		MasterEc2:   "t2.micro",
-		WorkerCount: 2,
-		WorkerEc2:   "t2.micro",
-		StateStore:  "s3://kops.state.seizadi.infoblox.com",
-		Vpc:         "vpc-0a75b33895655b46a",
-		Zones:       []string{"us-east-2a", "us-east-2b"},
+func GetKopsConfig(instance *clusteroperatorv1alpha1.Cluster) clusteroperatorv1alpha1.KopsConfig {
+
+	var kops clusteroperatorv1alpha1.KopsConfig
+	kops = instance.Spec.KopsConfig
+
+	// Define a new Kops Cluster Config object if not specified
+	if kops.Vpc == "" {
+		return clusteroperatorv1alpha1.KopsConfig{
+			Name:        instance.Spec.Name + ".soheil.belamaric.com",
+			MasterCount: 1,
+			MasterEc2:   "t2.micro",
+			WorkerCount: 2,
+			WorkerEc2:   "t2.micro",
+			StateStore:  "s3://kops.state.seizadi.infoblox.com",
+			Vpc:         "vpc-0a75b33895655b46a",
+			Zones:       []string{"us-east-2a", "us-east-2b"},
+		}
 	}
+	return kops
 }
 
 // Helper functions to check and remove string from a slice of strings.
