@@ -25,8 +25,9 @@ func CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 		" --master-size=" + cluster.MasterEc2 +
 		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
 		" --node-size=" + cluster.WorkerEc2 +
-		" --zones=" + strings.Join(cluster.Zones, ",")
-	fmt.Print(kopsCmd)
+		" --zones=" + strings.Join(cluster.Zones, ",") +
+		" --yes"
+
 	out, err := utils.RunCmd(kopsCmd)
 	if err != nil {
 		return string(out.Bytes()), err
@@ -74,7 +75,10 @@ func ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperato
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name + " -o json"
 	out, err := utils.RunCmd(kopsCmd)
+	fmt.Print(out)
 	if err != nil {
+		fmt.Print("\nAHHH\n")
+
 		return status, err
 	}
 
@@ -91,17 +95,16 @@ func GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv
 	kopsCmd := "/usr/local/bin/" +
 		"kops export kubecfg --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
-		" --kubeconfig=tmp/config"
+		" --kubeconfig=tmp/config.yaml"
 
-	out, err := utils.RunCmd(kopsCmd)
-	fmt.Print("\n" + string(out.Bytes()) + "\n")
+	_, err := utils.RunCmd(kopsCmd)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
 	config := clusteroperatorv1alpha1.KubeConfig{}
 
-	file, err := ioutil.ReadFile("tmp/config")
+	file, err := ioutil.ReadFile("tmp/config.yaml")
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}

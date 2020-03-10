@@ -138,11 +138,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				return reconcile.Result{}, err
 			}
 			reqLogger.Info("Cluster Created")
-			instance.Status.KubeConfig, err = kops.GetKubeConfig(instance.Spec.KopsConfig)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			reqLogger.Info("KUBECONFIG Updated")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
@@ -158,6 +153,12 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				instance.Status.KopsStatus.Nodes = status.Nodes
 				reqLogger.Info("Cluster Created")
 				instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
+				config, err := kops.GetKubeConfig(instance.Spec.KopsConfig)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				instance.Status.KubeConfig = config
+				reqLogger.Info("KUBECONFIG Updated")
 			} else {
 				// FIXME - If we get this state try validate again!!!
 				reqLogger.Info("Validate Returned Unexpected Result")
@@ -186,7 +187,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-		out, err := kops.DeleteCluster(GetKopsConfig(instance.Spec.Name))
+		out, err := kops.DeleteCluster(instance.Spec.KopsConfig)
 		reqLogger.Info(out)
 		if err != nil {
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
