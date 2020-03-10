@@ -75,10 +75,7 @@ func ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperato
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name + " -o json"
 	out, err := utils.RunCmd(kopsCmd)
-	fmt.Print(out)
 	if err != nil {
-		fmt.Print("\nAHHH\n")
-
 		return status, err
 	}
 
