@@ -129,7 +129,7 @@ export AWS_DEFAULT_REGION=us-east-2
 
 Kops settings
 ```bash
-export KOPS_CLUSTER_NAME=cluster1.soheil.belamaric.com
+export KOPS_CLUSTER_NAME=seizadicluster.soheil.belamaric.com
 export KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com
 export VPC_ID=vpc-0a75b33895655b46a
 export INTERNET_GATEWAY_ID=igw-047d4259cab6b99d2
