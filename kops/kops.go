@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	clusteroperatorv1alpha1 "github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
-	"github.com/seizadi/cluster-operator/utils"
+	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+	"github.com/infobloxopen/cluster-operator/utils"
 	"gopkg.in/yaml.v2"
 )
 

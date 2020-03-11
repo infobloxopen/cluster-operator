@@ -3,18 +3,17 @@ package cluster
 import (
 	"context"
 
-	"github.com/seizadi/cluster-operator/kops"
-	clusteroperatorv1alpha1 "github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+	"github.com/infobloxopen/cluster-operator/kops"
+	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+	"github.com/infobloxopen/cluster-operator/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-
-	"github.com/seizadi/cluster-operator/utils"
-	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"

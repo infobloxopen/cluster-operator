@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/seizadi/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+	"github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 )
 
 func init() {

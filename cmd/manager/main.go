@@ -12,9 +12,9 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"github.com/seizadi/cluster-operator/pkg/apis"
-	"github.com/seizadi/cluster-operator/pkg/controller"
-	"github.com/seizadi/cluster-operator/version"
+	"github.com/infobloxopen/cluster-operator/pkg/apis"
+	"github.com/infobloxopen/cluster-operator/pkg/controller"
+	"github.com/infobloxopen/cluster-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"

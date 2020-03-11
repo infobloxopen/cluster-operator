@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/seizadi/cluster-operator/pkg/controller/cluster"
+	"github.com/infobloxopen/cluster-operator/pkg/controller/cluster"
 )
 
 func init() {

@@ -1,4 +1,4 @@
-module github.com/seizadi/cluster-operator
+module github.com/infobloxopen/cluster-operator
 
 go 1.13
 
