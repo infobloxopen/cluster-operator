@@ -1,7 +1,0 @@
-apiVersion: cluster-operator.seizadi.github.com/v1alpha1
-kind: Cluster
-metadata:
-  name: example-cluster
-spec:
-  name: cluster1
----

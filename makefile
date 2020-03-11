@@ -17,14 +17,20 @@ operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
 	sed "s/{{ .Name }}/`cat .id`/g" deploy/cluster.yaml.in > $@
 
-deploy: .id deploy/cluster.yaml generate operator-sdk
-	kubectl apply -f deploy/crds/cluster-operator.seizadi.github.com_clusters_crd.yaml
-	helm upgrade -i `cat .id` deploy/cluster-operator
-	OPERATOR_NAME=clusterop .bin/operator-sdk-$(OPERATOR_SDK_VERSION) run --local --namespace "kops"
+operator-chart:
+	helm upgrade -i `cat .id`-cluster-operator --namespace `cat .id` \
+		deploy/cluster-operator \
+		--set crds.create=true
+
+deploy: .id deploy/cluster.yaml generate operator-chart operator-chart operator-todo
+
+operator-todo: .id operator-sdk
+	# TODO: move operator-sdk into chart
+	OPERATOR_NAME=clusterop .bin/operator-sdk-$(OPERATOR_SDK_VERSION) run --local --namespace `cat .id`
 
 cluster: deploy/cluster.yaml
 	# TODO: make our own namespaces
-	kubectl create ns kops
+	kubectl create ns `cat .id` || true
 	kubectl apply -f deploy/cluster.yaml
 
 generate:
