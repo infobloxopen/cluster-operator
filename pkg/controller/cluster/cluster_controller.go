@@ -105,6 +105,19 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+			config := instance.Spec.KopsConfig
+			// If KopsConfig is not defined in CR, use default
+			// TODO: Right now this only checks if the values are there. Eventually
+			// we want to use a few inputs to pull information from the CMDB or
+			// another controller that would hold the config information based on
+			// the supplied infra info
+			if config.Name == "" || config.MasterEc2 == "" || config.WorkerEc2 == "" || config.Vpc == "" ||
+				config.StateStore == "" || config.MasterCount < 1 || config.WorkerCount < 1 || len(config.Zones) < 1 {
+				instance.Spec.KopsConfig = GetKopsConfig(instance.Spec.Name)
+				if err := r.client.Update(context.TODO(), instance); err != nil {
+					return reconcile.Result{}, err
+				}
+			}
 		}
 
 		// Add the finalizer and update the object
@@ -120,7 +133,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		switch instance.Status.Phase {
 		case clusteroperatorv1alpha1.ClusterPending:
 			reqLogger.Info("Phase: PENDING")
-			_, err := kops.CreateCluster(GetKopsConfig(instance.Spec.Name))
+			_, err := kops.CreateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -128,7 +141,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
-			status, err := kops.ValidateCluster(GetKopsConfig(instance.Spec.Name))
+			status, err := kops.ValidateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -140,6 +153,12 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				instance.Status.KopsStatus.Nodes = status.Nodes
 				reqLogger.Info("Cluster Created")
 				instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
+				config, err := kops.GetKubeConfig(instance.Spec.KopsConfig)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				instance.Status.KubeConfig = config
+				reqLogger.Info("KUBECONFIG Updated")
 			} else {
 				// FIXME - If we get this state try validate again!!!
 				reqLogger.Info("Validate Returned Unexpected Result")
@@ -156,9 +175,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
-		if err := r.client.Update(context.TODO(), instance); err != nil {
-			return reconcile.Result{}, err
-		}
 
 		if instance.Status.Phase == clusteroperatorv1alpha1.ClusterSetup {
 			// TODO - Set to time.Duration depending on back-off behavior
@@ -171,7 +187,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-		out, err := kops.DeleteCluster(GetKopsConfig(instance.Spec.Name))
+		out, err := kops.DeleteCluster(instance.Spec.KopsConfig)
 		reqLogger.Info(out)
 		if err != nil {
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
@@ -194,7 +210,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 // Get Kops Config Object
 func GetKopsConfig(name string) clusteroperatorv1alpha1.KopsConfig {
-	// Define a new Kops Cluster Config object
+
+	// Define a new Kops Cluster Config object if not specified
 	return clusteroperatorv1alpha1.KopsConfig{
 		Name:        name + ".soheil.belamaric.com",
 		MasterCount: 1,

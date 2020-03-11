@@ -35,6 +35,63 @@ type KopsNodes struct {
 	Status   string `json:"status,omitempty"`
 }
 
+// KubeConfig holds the config to access the cluster
+// +k8s:openapi-gen=true
+type KubeConfig struct {
+	APIVersion     string           `yaml:"apiVersion,omitempty" json:"apiVersion,omitempty"`
+	Clusters       []ClusterConfigs `yaml:"clusters,omitempty" json:"clusters,omitempty"`
+	ContextConfigs []ContextConfigs `yaml:"contexts,omitempty" json:"contexts,omitempty"`
+	CurrentContext string           `yaml:"current-context,omitempty" json:"current-context,omitempty"`
+	Kind           string           `yaml:"kind,omitempty" json:"kind,omitempty"`
+	Preferences    struct {
+	} `yaml:"preferences,omitempty" json:"preferences,omitempty"`
+	Users []Users `yaml:"users,omitempty" json:"users,omitempty"`
+}
+
+// ClusterConfig defines attributes for kubeconfig cluster
+// +k8s:openapi-gen=true
+type ClusterConfig struct {
+	CertificateAuthorityData string `yaml:"certificate-authority-data,omitempty" json:"certificate-authority-data,omitempty"`
+	Server                   string `yaml:"server,omitempty" json:"server,omitempty"`
+}
+
+// ClusterConfigs defines a collection of cluster configs
+// +k8s:openapi-gen=true
+type ClusterConfigs struct {
+	ClusterConfigs ClusterConfig `yaml:"cluster,omitempty" json:"cluster,omitempty"`
+	Name           string        `yaml:"name,omitempty" json:"name,omitempty"`
+}
+
+// ContextConfig defines attributes for kubeconfig
+// +k8s:openapi-gen=true
+type ContextConfig struct {
+	Cluster string `yaml:"cluster,omitempty" json:"cluster,omitempty"`
+	User    string `yaml:"user,omitempty" json:"user,omitempty"`
+}
+
+// ContextConfigs defines a list of contexts for a kubeconfig
+// +k8s:openapi-gen=true
+type ContextConfigs struct {
+	ContextConfigs ContextConfig `yaml:"context,omitempty" json:"context,omitempty"`
+	Name           string        `yaml:"name" json:"name"`
+}
+
+// User defines a user for a cluster in a kubeconfig
+// +k8s:openapi-gen=true
+type User struct {
+	ClientCertificateData string `yaml:"client-certificate-data,omitempty" json:"client-certificate-data,omitempty"`
+	ClientKeyData         string `yaml:"client-key-data,omitempty" json:"client-key-data,omitempty"`
+	Password              string `yaml:"password,omitempty" json:"password,omitempty"`
+	Username              string `yaml:"username,omitempty" json:"username,omitempty"`
+}
+
+// Users is a list of 'User' that defines acces through a kubeconfig
+// +k8s:openapi-gen=true
+type Users struct {
+	Users User   `yaml:"user,omitempty" json:"user,omitempty"`
+	Name  string `yaml:"name,omitempty" json:"name,omitempty"`
+}
+
 // KopsStatus defines the status of the Kops Cluster
 // +k8s:openapi-gen=true
 type KopsStatus struct {
@@ -52,6 +109,8 @@ type ClusterSpec struct {
 	// definition.
 	// Cannot be updated.
 	Name string `json:"name,omitempty"`
+	// Kops Cluster Config
+	KopsConfig KopsConfig `json:"kops_config,omitempty"`
 }
 
 // PodPhase is a label for the condition of a pod at the current time.
@@ -79,10 +138,9 @@ type ClusterStatus struct {
 	// Phase represents the state of the cluster provisioning
 	// It transitions from PENDING to DONE, we might add more states for infrastructure provisioning
 	Phase ClusterPhase `json:"phase,omitempty"`
-	// Kops Cluster Config
-	KopsConfig KopsConfig `json:"kops_config,omitempty"`
 	// Kops Cluster Status
 	KopsStatus KopsStatus `json:"kops_status,omitempty"`
+	KubeConfig KubeConfig `json:"kubeconfig,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
