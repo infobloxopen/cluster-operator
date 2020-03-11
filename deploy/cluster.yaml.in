@@ -3,5 +3,5 @@ kind: Cluster
 metadata:
   name: example-cluster
 spec:
-  name: cluster1
+  name: {{ .Name }}
 ---
