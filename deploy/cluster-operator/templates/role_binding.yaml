@@ -1,7 +1,9 @@
+{{- $fullName := include "cluster-operator.fullname" . -}}
 kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: cluster-operator
+  name: {{ $fullName }}
+  namespace: {{ .Release.Namespace }}
 subjects:
 - kind: ServiceAccount
   name: cluster-operator

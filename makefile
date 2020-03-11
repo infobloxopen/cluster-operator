@@ -19,7 +19,12 @@ deploy/cluster.yaml: .id deploy/cluster.yaml.in
 
 deploy: .id deploy/cluster.yaml generate operator-sdk
 	kubectl apply -f deploy/crds/cluster-operator.seizadi.github.com_clusters_crd.yaml
+	helm upgrade -i `cat .id` deploy/cluster-operator
 	OPERATOR_NAME=clusterop .bin/operator-sdk-$(OPERATOR_SDK_VERSION) run --local --namespace "kops"
+
+cluster: deploy/cluster.yaml
+	# TODO: make our own namespaces
+	kubectl create ns kops
 	kubectl apply -f deploy/cluster.yaml
 
 generate:
