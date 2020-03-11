@@ -1,8 +1,9 @@
+{{- $fullName := include "cluster-operator.fullname" . -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null
-  name: cluster-operator
+  name: {{ $fullName }}
 rules:
 - apiGroups:
   - ""

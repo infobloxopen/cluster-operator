@@ -1,3 +1,7 @@
+{{/*
+FIXME: this file needs to use helm conventions, see deployment.yaml
+*/}}
+{{- if false }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -31,3 +35,4 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "cluster-operator"
+{{- end }}
