@@ -1,9 +1,11 @@
 package kops
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 
@@ -12,14 +14,24 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+var publicKey = "kops.pub"
 
-	kopsCmd := "/usr/local/bin/" +
+func init() {
+	envKey := os.Getenv("SSH_KEY")
+	if len(envKey) != 0 {
+		publicKey = envKey
+	}
+}
+
+// CreateCluster provisions a new cluster
+func CreateCluster(ctx context.Context, cluster clusteroperatorv1alpha1.KopsConfig) (*utils.Cmd, error) {
+
+	kopsCmdStr := "/usr/local/bin/" +
 		"kops create cluster" +
 		" --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
 		// FIXME - Should have ssh-key-name
-		" --ssh-public-key=kops.pub" +
+		" --ssh-public-key=" + publicKey +
 		" --vpc=" + cluster.Vpc +
 		" --master-count=" + strconv.Itoa(cluster.MasterCount) +
 		" --master-size=" + cluster.MasterEc2 +
@@ -28,12 +40,8 @@ func CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 		" --zones=" + strings.Join(cluster.Zones, ",") +
 		" --yes"
 
-	out, err := utils.RunCmd(kopsCmd)
-	if err != nil {
-		return string(out.Bytes()), err
-	}
-
-	return string(out.Bytes()), nil
+	kopsCmd := strings.Split(kopsCmdStr, " ")
+	return utils.New(ctx, nil, kopsCmd[0], kopsCmd[1:]...), nil
 }
 
 func UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
