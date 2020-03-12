@@ -20,8 +20,8 @@ The base project was created using:
 ```bash
 operator-sdk new cluster-operator
 cd cluster-operator
-operator-sdk add api --api-version=cluster-operator.seizadi.github.com/v1alpha1 --kind=Cluster
-operator-sdk add controller  --api-version=cluster-operator.seizadi.github.com/v1alpha1 --kind=Cluster
+operator-sdk add api --api-version=cluster-operator.infobloxopen.github.com/v1alpha1 --kind=Cluster
+operator-sdk add controller  --api-version=cluster-operator.infobloxopen.github.com/v1alpha1 --kind=Cluster
 ```
 
 You can use 
@@ -34,16 +34,16 @@ kind create cluster
 
 The Operator SDK does a lot of the heavy lifting we can focus on custom type definition for our
 Cluster object in 
-[cluster_types.go](https://github.com/seizadi/cluster-operator/blob/master/pkg/apis/clusteroperator/v1alpha1/cluster_types.go)
+[cluster_types.go](https://github.com/infobloxopen/cluster-operator/blob/master/pkg/apis/clusteroperator/v1alpha1/cluster_types.go)
 and the business logic in
-[cluster_controller.go](https://github.com/seizadi/cluster-operator/blob/master/pkg/controller/cluster/cluster_controller.go).
+[cluster_controller.go](https://github.com/infobloxopen/cluster-operator/blob/master/pkg/controller/cluster/cluster_controller.go).
 
 Ater making changes run:
 ```bash
 operator-sdk generate k8s
 ```
 regenerate code using code-gen code captured in
-[zz_generated.deepcopy.go](https://github.com/seizadi/cluster-operator/blob/master/pkg/apis/clusteroperator/v1alpha1/zz_generated.deepcopy.go)
+[zz_generated.deepcopy.go](https://github.com/infobloxopen/cluster-operator/blob/master/pkg/apis/clusteroperator/v1alpha1/zz_generated.deepcopy.go)
 
 You can do custom validation using
 [kubebuilder tags](https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html)
@@ -53,7 +53,7 @@ You can do custom validation using
 #### Initial Setup
 ```bash
 kind create cluster
-kubectl apply -f deploy/crds/cluster-operator.seizadi.github.com_clusters_crd.yaml
+kubectl apply -f deploy/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
 kubectl get crds
 ```
 ```bash
@@ -68,12 +68,27 @@ operator-sdk generate k8s
 
 Build and Run
 ```bash
-OPERATOR_NAME=clusterop operator-sdk run --local --namespace "kops"
+make deploy-local
 ```
 
 Test to see if working
 ```bash
-kubectl apply -f deploy/crds/cluster-operator.seizadi.github.com_v1alpha1_cluster_cr.yaml
+make cluster
+```
+If you stop and make changes and rerun controller:
+```bash
+make operator-todo
+```
+### Cluster Testing
+Assuming you have minikube or cluster with helm tiller you can run
+Build and Run
+```bash
+make deploy
+```
+
+Test to see if working
+```bash
+make cluster
 ```
 
 #### Debugging
@@ -90,7 +105,7 @@ Debugging with a client-go operator was easier since
 you can build the project native, but with the sdk-operator you have to build
 with delve option
 ```bash
-OPERATOR_NAME=clusterop operator-sdk run --local --namespace "kops" --enable-delve
+make operator-debug
 ```
 
 Then connect with remote debugger (even though you are running it local). The default

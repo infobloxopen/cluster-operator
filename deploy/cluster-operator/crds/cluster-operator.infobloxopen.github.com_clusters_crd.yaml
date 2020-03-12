@@ -3,9 +3,9 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: clusters.cluster-operator.seizadi.github.com
+  name: clusters.cluster-operator.infobloxopen.github.com
 spec:
-  group: cluster-operator.seizadi.github.com
+  group: cluster-operator.infobloxopen.github.com
   names:
     kind: Cluster
     listKind: ClusterList

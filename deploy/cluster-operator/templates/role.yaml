@@ -68,7 +68,7 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - cluster-operator.seizadi.github.com
+  - cluster-operator.infobloxopen.github.com
   resources:
   - '*'
   verbs:

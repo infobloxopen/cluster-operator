@@ -1,4 +1,4 @@
-apiVersion: cluster-operator.seizadi.github.com/v1alpha1
+apiVersion: cluster-operator.infobloxopen.github.com/v1alpha1
 kind: Cluster
 metadata:
   name: example-cluster

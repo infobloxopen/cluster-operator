@@ -97,7 +97,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	}
 
 	//Finalizer name
-	clusterFinalizer := "cluster.finalizer.cluster-operator.seizadi.github.com"
+	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
 
 	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
@@ -135,7 +135,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			out, err := kops.CreateCluster(GetKopsConfig(instance.Spec.Name))
 			reqLogger.Info(out)
 			if err != nil {
-				return reconcile.Result{}, err
+				// FIXME - Ignore error
+				// return reconcile.Result{}, err
 			}
 			reqLogger.Info("Cluster Created")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
