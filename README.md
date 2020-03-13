@@ -294,3 +294,9 @@ Cluster Spec so requires yaml file.
 You should consider [AWS System Manager](https://aws.amazon.com/systems-manager/), there
 will not be any SSH keys or SSH Port open on EC2 so a better security profile.
 There is an option to specify [no SSH Key](https://github.com/kubernetes/kops/pull/7096).
+
+#### Kops Versions
+We found that as developers had different versions of Kops or other binaries we had unexpected
+behavior. To solve this issue we created a container with the critical elements that we could run:
+[soheileizadi/kops](https://hub.docker.com/r/soheileizadi/kops).
+
