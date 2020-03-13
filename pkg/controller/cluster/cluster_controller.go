@@ -85,7 +85,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	instance := &clusteroperatorv1alpha1.Cluster{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
 	if err != nil {
-		reqLogger.Info(err.Error())
+		reqLogger.Error(err, "error requesting instance")
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
@@ -132,11 +132,18 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		switch instance.Status.Phase {
 		case clusteroperatorv1alpha1.ClusterPending:
 			reqLogger.Info("Phase: PENDING")
-			out, err := kops.CreateCluster(GetKopsConfig(instance.Spec.Name))
-			reqLogger.Info(out)
+			cmd, err := kops.CreateCluster(context.TODO(), GetKopsConfig(instance.Spec.Name))
 			if err != nil {
-				// FIXME - Ignore error
-				// return reconcile.Result{}, err
+				reqLogger.Error(err, "error creating kops command")
+				return reconcile.Result{}, err
+			}
+			if err := cmd.Start(); err != nil {
+				reqLogger.Error(err, "error starting command")
+				return reconcile.Result{}, err
+			}
+			if err := cmd.Wait(); err != nil {
+				reqLogger.Error(err, "error waiting command")
+				return reconcile.Result{}, err
 			}
 			reqLogger.Info("Cluster Created")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate

@@ -31,7 +31,7 @@ operator-crds:
 
 operator-todo: .id operator-sdk
 	# TODO: move operator-sdk into chart
-	OPERATOR_NAME=clusterop .bin/operator-sdk-$(OPERATOR_SDK_VERSION) run --local --namespace `cat .id`
+	OPERATOR_NAME=clusterop .bin/operator-sdk-$(OPERATOR_SDK_VERSION) run --local --namespace `cat .id` --operator-flags='--zap-devel'
 
 operator-debug: .id operator-sdk
 	# TODO: move operator-sdk into chart
