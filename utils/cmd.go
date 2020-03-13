@@ -4,7 +4,25 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
+	"strings"
 )
+
+func GetEnvs(envs []string) [][]string {
+	selEnvs := [][]string{}
+	if len(envs) > 0 {
+		osEnvs := os.Environ()
+		for _, e := range osEnvs {
+			pair := strings.SplitN(e, "=", 2)
+			for _, s := range envs {
+				if s == pair[0] {
+					selEnvs = append(selEnvs, pair)
+				}
+			}
+		}
+	}
+	
+	return selEnvs
+}
 
 func CopyBufferContentsToFile(srcBuff []byte, destFile string) (err error) {
 	out, err := os.Create(destFile)
