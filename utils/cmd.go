@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
-	
+
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -66,6 +66,23 @@ func RunCmd(cmdString string) (*bytes.Buffer, error) {
 	return &out, nil
 }
 
+func RunDockerCmd(dockerArgs []string) (*bytes.Buffer, error) {
+	var out bytes.Buffer
+
+	//cmd := exec.Command(cmdString)
+	cmd := exec.Command("/usr/local/bin/docker", dockerArgs...)
+	cmd.Stdout = &out
+	var errout bytes.Buffer
+	cmd.Stderr = &errout
+	err := cmd.Run()
+	if err != nil {
+		CopyBufferContentsToFile(errout.Bytes(), "./tmp/error.txt")
+		return &errout, err
+	}
+
+	return &out, nil
+}
+
 type Cmd struct {
 	*exec.Cmd
 	entry     *logrus.Entry
@@ -87,7 +104,6 @@ func New(ctx context.Context, entry *logrus.Entry, command string, arg ...string
 func (c *Cmd) GetCmdString() []string {
 	return c.cmdString
 }
-
 
 func (c *Cmd) Start() error {
 	_, err := c.startAndPipe()

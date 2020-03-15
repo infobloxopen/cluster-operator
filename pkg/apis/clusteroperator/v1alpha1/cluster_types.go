@@ -96,7 +96,7 @@ type Users struct {
 // +k8s:openapi-gen=true
 type KopsStatus struct {
 	Failures []KopsFailure `json:"failures,omitempty"`
-	Nodes    []KopsNode   `json:"nodes,omitempty"`
+	Nodes    []KopsNode    `json:"nodes,omitempty"`
 }
 
 // ClusterSpec defines the desired state of Cluster

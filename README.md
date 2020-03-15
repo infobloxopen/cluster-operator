@@ -58,7 +58,7 @@ Following Environment Variables are required:
 
 Following Environment Variables are optional:
 ```bash
-CLUSTER_OPERATOR_DEVELOPMENT - If set we will use kops dry-run and will not create cloud resources
+CLUSTER_OPERATOR_DEVELOPMENT - If set we will do kops dry-run and will not create cloud resources
 SSH_KEY - Override the default public key built into the operator for public key
 ```
 
@@ -196,7 +196,7 @@ kops update cluster --yes
 ```
 Then to check the status:
 ```bash
-kops validate cluster -o json
+kops validate cluster --state=s3://kops.state.seizadi.infoblox.com --name=seizadi.soheil.belamaric.com -o json
 ```
 ```json
 {

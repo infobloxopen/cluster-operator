@@ -98,14 +98,14 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
-	
+
 	// TODO - We should maybe catch lack of kops configuration earlier in operator startup
 	k, err := kops.NewKops()
 	if err != nil {
 		reqLogger.Error(err, "kops.NewKops Failed")
 		return reconcile.Result{}, err
 	}
-	
+
 	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// If no phase set default to pending for the initial phase
@@ -133,23 +133,29 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				return reconcile.Result{}, err
 			}
 		}
-		
+
 		// Run State Machine
 		// PENDING -> SETUP -> DONE
 		switch instance.Status.Phase {
 		case clusteroperatorv1alpha1.ClusterPending:
 			reqLogger.Info("Phase: PENDING")
-			cmd, err := k.CreateCluster(context.TODO(), GetKopsConfig(instance.Spec.Name))
+			//cmd, err := k.CreateCluster(context.TODO(), GetKopsConfig(instance.Spec.Name))
+			//if err != nil {
+			//	reqLogger.Error(err, "error creating kops command")
+			//	return reconcile.Result{}, err
+			//}
+			//if err := cmd.Start(); err != nil {
+			//	reqLogger.Error(err, "error starting command")
+			//	return reconcile.Result{}, err
+			//}
+			//if err := cmd.Wait(); err != nil {
+			//	reqLogger.Error(err, "error waiting command")
+			//	return reconcile.Result{}, err
+			//}
+			out, err := k.CreateCluster(GetKopsConfig(instance.Spec.Name))
+			reqLogger.Info(out)
 			if err != nil {
 				reqLogger.Error(err, "error creating kops command")
-				return reconcile.Result{}, err
-			}
-			if err := cmd.Start(); err != nil {
-				reqLogger.Error(err, "error starting command")
-				return reconcile.Result{}, err
-			}
-			if err := cmd.Wait(); err != nil {
-				reqLogger.Error(err, "error waiting command")
 				return reconcile.Result{}, err
 			}
 			reqLogger.Info("Cluster Created")

@@ -1,14 +1,14 @@
 package utils
 
 import (
-	"testing"
 	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"io/ioutil"
+	"testing"
 	"time"
-	
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -91,4 +91,3 @@ func TestMultiCloser(t *testing.T) {
 		t.Errorf("got: %s wanted: %s", string(bs), e)
 	}
 }
-

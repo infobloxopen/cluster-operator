@@ -10,7 +10,7 @@ func TestGetEnvs(t *testing.T) {
 	value := "2020"
 	os.Setenv(key, value)
 	envs := GetEnvs([]string{key})
-	
+
 	if len(envs) != 1 {
 		t.Error("Expected 1 got ", len(envs))
 	} else {
@@ -18,12 +18,12 @@ func TestGetEnvs(t *testing.T) {
 		if pair[0] != key {
 			t.Error("Expected ", key, " got ", pair[0])
 		}
-		
+
 		if pair[1] != value {
 			t.Error("Expected ", value, " got ", pair[1])
 		}
 	}
-	
+
 	os.Unsetenv(key)
 }
 
@@ -34,11 +34,11 @@ func TestCheckEnvs(t *testing.T) {
 	os.Setenv(key, value)
 	envs := GetEnvs([]string{key, missingKeys[0]})
 	missingEnvs := CheckEnvs(envs, missingKeys)
-	
+
 	if len(missingEnvs) != len(missingKeys) {
 		t.Error("Expected 2 got ", len(envs))
 	} else {
-		count :=0
+		count := 0
 		for _, e := range missingEnvs {
 			for _, m := range missingKeys {
 				if e == m {
@@ -51,4 +51,18 @@ func TestCheckEnvs(t *testing.T) {
 		}
 	}
 	os.Unsetenv(key)
+}
+
+func TestGetDockerEnvFlags(t *testing.T) {
+	envs := [][]string{
+		{"key1", "value1"},
+		{"key2", "value2"},
+	}
+	expectedFlags := " -e key1=value1 -e key2=value2"
+
+	envFlags := GetDockerEnvFlags(envs)
+
+	if envFlags != expectedFlags {
+		t.Error("Expected ", expectedFlags, " got ", envFlags)
+	}
 }
