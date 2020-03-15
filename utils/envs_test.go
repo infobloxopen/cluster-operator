@@ -6,7 +6,7 @@ import (
 )
 
 func TestGetEnvs(t *testing.T) {
-	key := "CLUSTEROP_TEST_9898"
+	key := "CLUSTER_OPERATOR_TEST_9898"
 	value := "2020"
 	os.Setenv(key, value)
 	envs := GetEnvs([]string{key})
@@ -28,9 +28,9 @@ func TestGetEnvs(t *testing.T) {
 }
 
 func TestCheckEnvs(t *testing.T) {
-	key := "CLUSTEROP_TEST_9898"
+	key := "CLUSTER_OPERATOR_TEST_9898"
 	value := "2020"
-	missingKeys := []string{"CLUSTEROP_TEST_NOT_IN_ENV1", "CLUSTEROP_TEST_NOT_IN_ENV2"}
+	missingKeys := []string{"CLUSTER_OPERATOR_TEST_NOT_IN_ENV1", "CLUSTER_OPERATOR_TEST_NOT_IN_ENV2"}
 	os.Setenv(key, value)
 	envs := GetEnvs([]string{key, missingKeys[0]})
 	missingEnvs := CheckEnvs(envs, missingKeys)

@@ -48,6 +48,20 @@ regenerate code using code-gen code captured in
 You can do custom validation using
 [kubebuilder tags](https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html)
 
+## Build and Run
+
+### Environment Variables
+Following Environment Variables are required:
+```bash
+
+```
+
+Following Environment Variables are optional:
+```bash
+CLUSTER_OPERATOR_DEVELOPMENT - If set we will use kops dry-run and will not create cloud resources
+SSH_KEY - Override the default public key built into the operator for public key
+```
+
 ### Local Testing
 
 #### Initial Setup

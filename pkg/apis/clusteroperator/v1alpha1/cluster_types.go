@@ -27,7 +27,7 @@ type KopsFailure struct {
 
 // KopsNodes resports about the cluster nodes when ready
 // +k8s:openapi-gen=true
-type KopsNodes struct {
+type KopsNode struct {
 	Name     string `json:"name,omitempty"`
 	Zone     string `json:"zone,omitempty"`
 	Role     string `json:"role,omitempty"`
@@ -96,7 +96,7 @@ type Users struct {
 // +k8s:openapi-gen=true
 type KopsStatus struct {
 	Failures []KopsFailure `json:"failures,omitempty"`
-	Nodes    []KopsNodes   `json:"nodes,omitempty"`
+	Nodes    []KopsNode   `json:"nodes,omitempty"`
 }
 
 // ClusterSpec defines the desired state of Cluster

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strconv"
 	"strings"
 	"errors"
@@ -16,6 +15,7 @@ import (
 )
 
 type KopsCmd struct {
+	devMode bool
 	publicKey string
 	envs      [][]string
 }
@@ -28,6 +28,7 @@ func NewKops() (*KopsCmd, error) {
 	}
 	filterEnvs := append([]string {
 		"SSH_KEY",
+		"CLUSTER_OPERATOR_DEVELOPMENT",
 	}, reqEnvs[0:]...)
 
 	// FIXME - Integrate public key function into the envs
@@ -35,13 +36,16 @@ func NewKops() (*KopsCmd, error) {
 		publicKey: "kops.pub",
 		envs: utils.GetEnvs(filterEnvs),
 	}
-	envKey := os.Getenv("SSH_KEY")
-	if len(envKey) != 0 {
-		k.publicKey = envKey
+	
+	for _, pair := range k.envs {
+		if pair[0] == "CLUSTER_OPERATOR_DEVELOPMENT" {
+			k.devMode = true
+		} else if (pair[0] == "SSH_KEY") && (len(pair[1]) > 0) {
+			k.publicKey = pair[1]
+		}
 	}
 	
 	missingEnvs := utils.CheckEnvs(k.envs, reqEnvs)
-	
 	if len(missingEnvs) > 0 {
 		foundEnvs := []string{}
 		for _, e := range k.envs {
@@ -76,6 +80,10 @@ func (k *KopsCmd) CreateCluster(ctx context.Context, cluster clusteroperatorv1al
 
 func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 
+	if (k.devMode) { // Dry-run in Dev Mode and skip Update Cluster
+		return "", nil
+	}
+	
 	kopsCmd := "/usr/local/bin/" +
 		"kops update cluster " +
 		" --name=" + cluster.Name +
@@ -108,7 +116,22 @@ func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv1alpha1.KopsStatus, error) {
 
 	status := clusteroperatorv1alpha1.KopsStatus{}
-
+	
+	if (k.devMode) { // Dry-run in Dev Mode and skip Validate Cluster return Cluster Up Status
+		status = clusteroperatorv1alpha1.KopsStatus{
+			Nodes: []clusteroperatorv1alpha1.KopsNode{
+				{
+					Name:     "ip-172-17-17-143.compute.internal",
+					Zone:     cluster.Zones[0],
+					Role:     "Master",
+					Hostname: "ip-172-17-17-143.compute.internal",
+					Status:   "True",
+				},
+			},
+		}
+		return status, nil
+	}
+	
 	kopsCmd := "/usr/local/bin/" +
 		"kops validate cluster" +
 		" --state=" + cluster.StateStore +
@@ -128,6 +151,11 @@ func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (c
 }
 
 func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv1alpha1.KubeConfig, error) {
+	
+	if (k.devMode) { // Dry-run in Dev Mode and skip get kube.config
+		return clusteroperatorv1alpha1.KubeConfig{}, nil
+	}
+	
 	kopsCmd := "/usr/local/bin/" +
 		"kops export kubecfg --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
