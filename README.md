@@ -53,42 +53,39 @@ You can do custom validation using
 #### Initial Setup
 ```bash
 kind create cluster
-kubectl apply -f deploy/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
-kubectl get crds
-```
-```bash
-kubectl create ns kops && kubectl config set-context $(kubectl config current-context) --namespace=kops
-```
-
-#### Change & Debug
-If changes to types
-```bash
-operator-sdk generate k8s
 ```
 
 Build and Run
 ```bash
 make deploy-local
 ```
-
 Test to see if working
 ```bash
 make cluster
+```
+Check status
+```bash
+make status
+```
+To delete cluster
+```bash
+make delete
 ```
 If you stop and make changes and rerun controller:
 ```bash
 make operator-todo
 ```
 ### Cluster Testing
-Assuming you have minikube or cluster with helm tiller you can run
+Assuming you have minikube or a cluster with helm tiller you can run
 Build and Run
 ```bash
 make deploy
 ```
-
-Test to see if working
+You can use the other targets to create, check status or delete
 ```bash
 make cluster
+make status
+make delete
 ```
 
 #### Debugging
@@ -144,7 +141,7 @@ export AWS_DEFAULT_REGION=us-east-2
 
 Kops settings
 ```bash
-export KOPS_CLUSTER_NAME=seizadicluster.soheil.belamaric.com
+export KOPS_CLUSTER_NAME=seizadi.soheil.belamaric.com
 export KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com
 export VPC_ID=vpc-0a75b33895655b46a
 export INTERNET_GATEWAY_ID=igw-047d4259cab6b99d2
@@ -166,10 +163,10 @@ aws ec2 create-internet-gateway --region ${AWS_DEFAULT_REGION}
 aws ec2 attach-internet-gateway --internet-gateway-id ${INTERNET_GATEWAY_ID} --vpc-id ${VPC_ID} --region ${AWS_DEFAULT_REGION}
 ```
 ```bash
-kops create cluster \
---name=${KOPS_CLUSTER_NAME} \
---state=${KOPS_STATE_STORE} \
- --ssh-public-key=kops.pub \
+kops update cluster \
+--name=seizadi.soheil.belamaric.com \
+--state=s3://kops.state.seizadi.infoblox.com \
+--ssh-public-key=kops.pub \
 --vpc=${VPC_ID} \
 --master-count 1 \
 --master-size=t2.micro \

@@ -8,43 +8,73 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"errors"
 
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	"github.com/infobloxopen/cluster-operator/utils"
 	"gopkg.in/yaml.v2"
 )
 
-var publicKey = "kops.pub"
+type KopsCmd struct {
+	publicKey string
+	envs      [][]string
+}
 
-func init() {
+func NewKops() (*KopsCmd, error) {
+	reqEnvs := []string {
+		"AWS_ACCESS_KEY_ID",
+		"AWS_SECRET_ACCESS_KEY",
+		"KOPS_STATE_STORE",
+	}
+	filterEnvs := append([]string {
+		"SSH_KEY",
+	}, reqEnvs[0:]...)
+
+	// FIXME - Integrate public key function into the envs
+	k := KopsCmd {
+		publicKey: "kops.pub",
+		envs: utils.GetEnvs(filterEnvs),
+	}
 	envKey := os.Getenv("SSH_KEY")
 	if len(envKey) != 0 {
-		publicKey = envKey
+		k.publicKey = envKey
 	}
+	
+	missingEnvs := utils.CheckEnvs(k.envs, reqEnvs)
+	
+	if len(missingEnvs) > 0 {
+		foundEnvs := []string{}
+		for _, e := range k.envs {
+			foundEnvs = append(foundEnvs, e[0])
+		}
+		return &k, errors.New("Missing environment variables for Kops " + strings.Join(missingEnvs, ", ") +
+			" Found Envs" + strings.Join(foundEnvs, ", "))
+	}
+	
+	return &k, nil
 }
 
 // CreateCluster provisions a new cluster
-func CreateCluster(ctx context.Context, cluster clusteroperatorv1alpha1.KopsConfig) (*utils.Cmd, error) {
+func (k *KopsCmd) CreateCluster(ctx context.Context, cluster clusteroperatorv1alpha1.KopsConfig) (*utils.Cmd, error) {
 
 	kopsCmdStr := "/usr/local/bin/" +
 		"kops create cluster" +
 		" --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
 		// FIXME - Should have ssh-key-name
-		" --ssh-public-key=" + publicKey +
+		" --ssh-public-key=" + k.publicKey +
 		" --vpc=" + cluster.Vpc +
 		" --master-count=" + strconv.Itoa(cluster.MasterCount) +
 		" --master-size=" + cluster.MasterEc2 +
 		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
 		" --node-size=" + cluster.WorkerEc2 +
-		" --zones=" + strings.Join(cluster.Zones, ",") +
-		" --yes"
+		" --zones=" + strings.Join(cluster.Zones, ",")
 
 	kopsCmd := strings.Split(kopsCmdStr, " ")
 	return utils.New(ctx, nil, kopsCmd[0], kopsCmd[1:]...), nil
 }
 
-func UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 
 	kopsCmd := "/usr/local/bin/" +
 		"kops update cluster " +
@@ -60,11 +90,12 @@ func UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 	return string(out.Bytes()), nil
 }
 
-func DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 
 	kopsCmd := "/usr/local/bin/" +
 		"kops delete cluster --name=" + cluster.Name +
-		" --state=" + cluster.StateStore
+		" --state=" + cluster.StateStore +
+		" --yes"
 
 	out, err := utils.RunCmd(kopsCmd)
 	if err != nil {
@@ -74,7 +105,7 @@ func DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 	return string(out.Bytes()), nil
 }
 
-func ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv1alpha1.KopsStatus, error) {
+func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv1alpha1.KopsStatus, error) {
 
 	status := clusteroperatorv1alpha1.KopsStatus{}
 
@@ -96,7 +127,7 @@ func ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperato
 	return status, nil
 }
 
-func GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv1alpha1.KubeConfig, error) {
+func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clusteroperatorv1alpha1.KubeConfig, error) {
 	kopsCmd := "/usr/local/bin/" +
 		"kops export kubecfg --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +

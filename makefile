@@ -42,6 +42,9 @@ cluster: deploy/cluster.yaml
 	kubectl create ns `cat .id` || true
 	kubectl apply -f deploy/cluster.yaml
 
+status:
+	kubectl -n `cat .id` describe cluster example-cluster
+
 delete:
 	kubectl -n `cat .id` delete cluster example-cluster
 

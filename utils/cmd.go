@@ -7,29 +7,11 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
-
+	
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-func GetEnvs(envs []string) [][]string {
-	selEnvs := [][]string{}
-	if len(envs) > 0 {
-		osEnvs := os.Environ()
-		for _, e := range osEnvs {
-			pair := strings.SplitN(e, "=", 2)
-			for _, s := range envs {
-				if s == pair[0] {
-					selEnvs = append(selEnvs, pair)
-				}
-			}
-		}
-	}
-	
-	return selEnvs
-}
 
 func CopyBufferContentsToFile(srcBuff []byte, destFile string) (err error) {
 	out, err := os.Create(destFile)
@@ -101,6 +83,11 @@ func New(ctx context.Context, entry *logrus.Entry, command string, arg ...string
 		entry:     entry,
 	}
 }
+
+func (c *Cmd) GetCmdString() []string {
+	return c.cmdString
+}
+
 
 func (c *Cmd) Start() error {
 	_, err := c.startAndPipe()
