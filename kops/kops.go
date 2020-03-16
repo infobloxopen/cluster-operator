@@ -139,9 +139,53 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 		"docker run" +
 		utils.GetDockerEnvFlags(k.envs) +
 		" soheileizadi/kops:v1.0" +
-		" --state=" + cluster.StateStore +
 		" update cluster " +
+		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
+		// FIXME - Add in when we switch to kops config
+		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
+		// " --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
+		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
+		" --yes"
+
+	out, err := utils.RunCmd(kopsCmd)
+	if err != nil {
+		return string(out.Bytes()), err
+	}
+
+	return string(out.Bytes()), nil
+}
+
+func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+
+	if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
+		return "", nil
+	}
+
+	pwd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	// Make sure we have config in tmp/config.yaml
+	_, err = k.GetKubeConfig(cluster)
+	if err != nil {
+		return "", err
+	}
+
+	kopsCmd := "/usr/local/bin/" +
+		"docker run" +
+		utils.GetDockerEnvFlags(k.envs) +
+		" -e KUBECONFIG=/kube/config.yaml" +
+		" -v " + pwd + "/tmp:/kube" +
+		" soheileizadi/kops:v1.0" +
+		" rolling-update cluster " +
+		" --state=" + cluster.StateStore +
+		" --name=" + cluster.Name +
+		// FIXME - Add in when we switch to kops config
+		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
+		// " --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
+		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
 	out, err := utils.RunCmd(kopsCmd)

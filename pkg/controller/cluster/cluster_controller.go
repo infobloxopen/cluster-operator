@@ -167,6 +167,13 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
+			// We call rolling-update to apply these changes
+			out, err = k.RollingUpdateCluster(GetKopsConfig(instance.Spec.Name))
+			reqLogger.Info(out)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 			reqLogger.Info("Cluster Updated")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:

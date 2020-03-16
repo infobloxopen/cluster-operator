@@ -101,7 +101,52 @@ make cluster
 make status
 make delete
 ```
+If the cluster is Phase == Done and you want to see more detail about the
+cluster you can use the kube config that is saved in tmp/config.yaml to reach the cluster:
+```bash
+KUBECONFIG=tmp/config.yaml kubectl get nodes
+```
 
+The kubeconfig can also be retrieved from API using kubectl by query of the cluster CRD:
+```bash
+kubectl get cluster example-cluster -o yaml
+apiVersion: cluster-operator.infobloxopen.github.com/v1alpha1
+kind: Cluster
+metadata:
+  annotations:
+....
+spec:
+  kops_config:
+    master_count: 1
+    master_ec2: t2.micro
+    name: seizadi.soheil.belamaric.com
+    state_store: s3://kops.state.seizadi.infoblox.com
+    vpc: vpc-0a75b33895655b46a
+    worker_count: 2
+    worker_ec2: t2.micro
+    zones:
+    - us-east-2a
+    - us-east-2b
+  name: seizadi
+status:
+  kops_status:
+    nodes:
+    - hostname: ip-172-17-17-51.us-east-2.compute.internal
+      name: ip-172-17-17-51.us-east-2.compute.internal
+      role: master
+      status: "True"
+      zone: us-east-2a
+....
+  kubeconfig:
+    apiVersion: v1
+    clusters:
+    - cluster:
+....
+  phase: Done
+sc-l-seizadi:cluster-operator seizadi$ kubectl -n `cat .id` get cluster example-cluster
+NAME              AGE
+example-cluster   30m
+```
 #### Debugging
 Getting debugging to work with Delve is important, go the latest version
 ```bash
@@ -122,7 +167,6 @@ make operator-debug
 Then connect with remote debugger (even though you are running it local). The default
 port 2345 is what you need for the port, later if you run operator in cluster you need
 to forward the port and you will need to configure a higher number port, more on this later.
-
 
 
 ## Kops
