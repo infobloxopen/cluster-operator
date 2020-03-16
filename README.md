@@ -1,3 +1,12 @@
+# ISSUES
+Able to get k8s.io/kops imported in go.mod, had to do some workarounds with the file to avoid Azure file version collisions. All command functions are in k8s.io/kops/cmd/kops that we would want to import into the file using those functions. You get an error when you try to import that package in a file saying it is a 'program' and not a 'package'. When you try to `go get k8s.io/kops/cmd/kops` you get
+../../pkg/mod/k8s.io/kops@v1.16.0/cmd/kops/create.go:35:2: module k8s.io/kubernetes@latest found (v1.17.4), but does not contain package k8s.io/kubernetes/pkg/kubectl/cmd/util
+../../pkg/mod/k8s.io/kops@v1.16.0/cmd/kops/create_ig.go:36:2: module k8s.io/kubernetes@latest found (v1.17.4), but does not contain package k8s.io/kubernetes/pkg/kubectl/cmd/util/editor
+../../pkg/mod/k8s.io/kops@v1.16.0/cmd/kops/completion.go:27:2: module k8s.io/kubernetes@latest found (v1.17.4), but does not contain package k8s.io/kubernetes/pkg/kubectl/util/i18n
+../../pkg/mod/k8s.io/kops@v1.16.0/cmd/kops/completion.go:28:2: module k8s.io/kubernetes@latest found (v1.17.4), but does not contain package k8s.io/kubernetes/pkg/kubectl/util/templates
+
+I have tried to rewrite the kubernetes version to fix this in the go.mod file but it would only look for the latest version. My guess is that I am unable to import the cmd directory to the files because it can't propely import in go.mod. I am also noting that the package in that directory is called 'main' so the naming in the imports header may be off.
+
 # Cluster Operator
 Project that provisions kuberneres (k8s) cluster using k8s 
 [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
