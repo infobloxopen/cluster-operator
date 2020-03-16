@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
-
+	
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	"github.com/infobloxopen/cluster-operator/utils"
 	"gopkg.in/yaml.v2"
@@ -61,42 +61,31 @@ func NewKops() (*KopsCmd, error) {
 // CreateCluster provisions a new cluster
 //func (k *KopsCmd) CreateCluster(ctx context.Context, cluster clusteroperatorv1alpha1.KopsConfig) (*utils.Cmd, error) {
 //
-//	//kopsCmdStr := "/usr/local/bin/" +
-//	//	"kops create cluster" +
-//	//	" --name=" + cluster.Name +
-//	//	" --state=" + cluster.StateStore +
-//	//	// FIXME - Should have ssh-key-name
-//	//	" --ssh-public-key=" + k.publicKey +
-//	//	" --vpc=" + cluster.Vpc +
-//	//	" --master-count=" + strconv.Itoa(cluster.MasterCount) +
-//	//	" --master-size=" + cluster.MasterEc2 +
-//	//	" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
-//	//	" --node-size=" + cluster.WorkerEc2 +
-//	//	" --zones=" + strings.Join(cluster.Zones, ",")
 //	pwd, err := os.Getwd()
 //	if err != nil {
 //		return nil, err
 //	}
-//	kopsCmdStr := "/usr/local/bin/" +
-//		"docker run" +
-//		" -v " + pwd + "/ssh:/ssh " +
-//		utils.GetDockerEnvFlags(k.envs) +
-//		" soheileizadi/kops:v1.0" +
-//		" --state=" + cluster.StateStore +
-//		" create cluster" +
-//		" --name=" + cluster.Name +
+//	kopsCmd := "/usr/local/bin/docker"
+//	kopsArgs := []string {"run"}
+//	kopsArgs = append(kopsArgs, utils.GetDockerEnvFlagss(k.envs)...)
+//	kopsArgs = append(kopsArgs,
+//		"-v " + pwd + "/ssh:/ssh",
+//		"soheileizadi/kops:v1.0",
+//		"--state=" + cluster.StateStore,
+//		"create cluster",
+//		"--name=" + cluster.Name,
 //		// FIXME - Should have ssh-key-name
-//		" --ssh-public-key=" + "/ssh/" + k.publicKey +
-//		" --vpc=" + cluster.Vpc +
-//		" --master-count=" + strconv.Itoa(cluster.MasterCount) +
-//		" --master-size=" + cluster.MasterEc2 +
-//		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
-//		" --node-size=" + cluster.WorkerEc2 +
-//		" --zones=" + strings.Join(cluster.Zones, ",")
-//	fmt.Println("KOPS CMD--->>>>>>>>>")
-//	fmt.Println(kopsCmdStr)
-//	kopsCmd := strings.Split(kopsCmdStr, " ")
-//	return utils.New(ctx, nil, kopsCmd[0], kopsCmd[1:]...), nil
+//		"--ssh-public-key=" + "/ssh/" + k.publicKey,
+//		"--vpc=" + cluster.Vpc,
+//		"--master-count=" + strconv.Itoa(cluster.MasterCount),
+//		"--master-size=" + cluster.MasterEc2,
+//		"--node-count=" + strconv.Itoa(cluster.WorkerCount),
+//		"--node-size=" + cluster.WorkerEc2,
+//		"--zones=" + strings.Join(cluster.Zones, ","))
+//
+//	fmt.Println("KOPS CMD ARGS--->>>>>>>>>")
+//	fmt.Println(kopsArgs)
+//	return utils.New(ctx, nil, kopsCmd, kopsArgs...), nil
 //}
 
 func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
@@ -217,8 +206,7 @@ func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 
 //func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 //
-//	//kopsCmd := "/usr/local/bin/" +
-//	//	"docker run" +
+//	//kopsCmd := "/usr/local/bin/docker"
 //	kopsArgs := []string{"run", "--env-file=tmp/kops_env"}
 //	kopsArgs = append(kopsArgs,
 //		"soheileizadi/kops:v1.0",
@@ -228,7 +216,6 @@ func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 //		"--yes")
 //
 //	fmt.Println(kopsArgs)
-//	//out, err := utils.RunCmd(kopsCmd)
 //	out, err := utils.RunDockerCmd(kopsArgs)
 //	if err != nil {
 //		return string(out.Bytes()), err
