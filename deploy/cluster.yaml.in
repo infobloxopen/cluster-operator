@@ -5,4 +5,13 @@ metadata:
   namespace: {{ .Name }}
 spec:
   name: {{ .Name }}
+  kops_config:
+    master_count: 1
+    master_ec2: t2.micro
+    vpc: vpc-0a75b33895655b46a
+    worker_count: 2
+    worker_ec2: t2.micro
+    zones:
+    - us-east-2a
+    - us-east-2b
 ---

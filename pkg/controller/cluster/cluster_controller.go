@@ -119,7 +119,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// the supplied infra info
 			if config.Name == "" || config.MasterEc2 == "" || config.WorkerEc2 == "" || config.Vpc == "" ||
 				config.StateStore == "" || config.MasterCount < 1 || config.WorkerCount < 1 || len(config.Zones) < 1 {
-				instance.Spec.KopsConfig = GetKopsConfig(instance.Spec.Name)
+				instance.Spec.KopsConfig = GetKopsConfig(instance.Spec)
 				if err := r.client.Update(context.TODO(), instance); err != nil {
 					return reconcile.Result{}, err
 				}
@@ -152,7 +152,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			//	reqLogger.Error(err, "error waiting command")
 			//	return reconcile.Result{}, err
 			//}
-			out, err := k.CreateCluster(GetKopsConfig(instance.Spec.Name))
+			out, err := k.CreateCluster(GetKopsConfig(instance.Spec))
 			reqLogger.Info(out)
 			if err != nil {
 				reqLogger.Error(err, "error creating kops command")
@@ -162,14 +162,14 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
 		case clusteroperatorv1alpha1.ClusterUpdate:
 			reqLogger.Info("Phase: UPDATE")
-			out, err := k.UpdateCluster(GetKopsConfig(instance.Spec.Name))
+			out, err := k.UpdateCluster(GetKopsConfig(instance.Spec))
 			reqLogger.Info(out)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
 			// We call rolling-update to apply these changes
-			out, err = k.RollingUpdateCluster(GetKopsConfig(instance.Spec.Name))
+			out, err = k.RollingUpdateCluster(GetKopsConfig(instance.Spec))
 			reqLogger.Info(out)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -246,17 +246,18 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 }
 
 // Get Kops Config Object
-func GetKopsConfig(name string) clusteroperatorv1alpha1.KopsConfig {
+func GetKopsConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperatorv1alpha1.KopsConfig {
 
 	// Define a new Kops Cluster Config object if not specified
 	return clusteroperatorv1alpha1.KopsConfig{
-		Name:        name + ".soheil.belamaric.com",
-		MasterCount: 1,
-		MasterEc2:   "t2.micro",
-		WorkerCount: 2,
-		WorkerEc2:   "t2.micro",
+		// FIXME - Pickup . .soheil.belamaric.com and "s3://kops.state.seizadi.infoblox.com" from Operator Config
+		Name:        c.Name + ".soheil.belamaric.com",
+		MasterCount: c.KopsConfig.MasterCount,
+		MasterEc2:   c.KopsConfig.MasterEc2,
+		WorkerCount: c.KopsConfig.WorkerCount,
+		WorkerEc2:   c.KopsConfig.WorkerEc2,
 		StateStore:  "s3://kops.state.seizadi.infoblox.com",
-		Vpc:         "vpc-0a75b33895655b46a",
-		Zones:       []string{"us-east-2a", "us-east-2b"},
+		Vpc:         c.KopsConfig.Vpc,
+		Zones:       c.KopsConfig.Zones,
 	}
 }
