@@ -4,13 +4,30 @@ go 1.13
 
 require (
 	github.com/Azure/go-autorest v12.2.0+incompatible
+	github.com/Masterminds/sprig v2.17.1+incompatible
 	github.com/aws/aws-sdk-go v1.23.0
+	github.com/blang/semver v3.5.1+incompatible
+	github.com/denverdino/aliyungo v0.0.0-20180316152028-2581e433b270
+	github.com/digitalocean/godo v1.19.0
+	github.com/docker/engine-api v0.0.0-20160509170047-dea108d3aa0c
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-delve/delve v1.4.0 // indirect
+	github.com/gophercloud/gophercloud v0.2.0
+	github.com/hashicorp/hcl v1.0.0
+	github.com/mitchellh/mapstructure v1.1.2
 	github.com/operator-framework/operator-sdk v0.15.2
+	github.com/pborman/uuid v1.2.0
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
+	github.com/spf13/viper v1.4.0
+	github.com/spotinst/spotinst-sdk-go v0.0.0-20190505130751-eb52d7ac273c
+	github.com/vmware/govmomi v0.20.1
+	golang.org/x/crypto v0.0.0-20191028145041-f83a4685e152
+	golang.org/x/net v0.0.0-20191028085509-fe3aa8a45271
+	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
+	google.golang.org/api v0.6.1-0.20190607001116-5213b8090861
 	gopkg.in/yaml.v2 v2.2.4
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
@@ -18,6 +35,7 @@ require (
 	k8s.io/klog v1.0.0
 	k8s.io/kops v1.16.0
 	k8s.io/kubectl v0.0.0
+	k8s.io/legacy-cloud-providers v0.0.0
 	sigs.k8s.io/controller-runtime v0.4.0
 )
 
