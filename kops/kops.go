@@ -88,11 +88,11 @@ func NewKops() (*KopsCmd, error) {
 //	return utils.New(ctx, nil, kopsCmd, kopsArgs...), nil
 //}
 
-func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
 	pwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return err
 	}
 	kopsCmdStr := "/usr/local/bin/" +
 		"docker run" +
@@ -110,18 +110,18 @@ func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
 		" --node-size=" + cluster.WorkerEc2 +
 		" --zones=" + strings.Join(cluster.Zones, ",")
-	out, err := utils.RunCmd(kopsCmdStr)
+	err = utils.RunStreamingCmd(kopsCmdStr)
 	if err != nil {
-		return string(out.Bytes()), err
+		return err
 	}
 
-	return string(out.Bytes()), nil
+	return nil
 }
 
-func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
 	if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
-		return "", nil
+		return nil
 	}
 
 	kopsCmd := "/usr/local/bin/" +
@@ -137,29 +137,29 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
-	out, err := utils.RunCmd(kopsCmd)
+	err := utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
-		return string(out.Bytes()), err
+		return err
 	}
 
-	return string(out.Bytes()), nil
+	return nil
 }
 
-func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
 	if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
-		return "", nil
+		return nil
 	}
 
 	pwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	// Make sure we have config in tmp/config.yaml
 	_, err = k.GetKubeConfig(cluster)
 	if err != nil {
-		return "", err
+		return err
 	}
 
 	kopsCmd := "/usr/local/bin/" +
@@ -177,15 +177,15 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
-	out, err := utils.RunCmd(kopsCmd)
+	err = utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
-		return string(out.Bytes()), err
+		return err
 	}
 
-	return string(out.Bytes()), nil
+	return nil
 }
 
-func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
 	kopsCmd := "/usr/local/bin/" +
 		"docker run" +
@@ -196,12 +196,12 @@ func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 		" --yes"
 
 	//out, err := utils.RunCmd(kopsCmd)
-	out, err := utils.RunCmd(kopsCmd)
+	err := utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
-		return string(out.Bytes()), err
+		return err
 	}
 
-	return string(out.Bytes()), nil
+	return nil
 }
 
 //func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
@@ -298,7 +298,7 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		" export kubecfg --name=" + cluster.Name +
 		" --kubeconfig=/tmp/config.yaml"
 
-	_, err = utils.RunCmd(kopsCmd)
+	err = utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}

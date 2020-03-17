@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"sync"
-
+	
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -64,6 +64,40 @@ func RunCmd(cmdString string) (*bytes.Buffer, error) {
 	}
 
 	return &out, nil
+}
+
+func RunStreamingCmd(cmdString string) error {
+	var out bytes.Buffer
+	
+	cmd := exec.Command("echo", cmdString)
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	
+	var mode os.FileMode = 509
+	err = os.MkdirAll("./tmp", mode)
+	if err != nil {
+		return err
+	}
+	
+	err = CopyBufferContentsToFile(out.Bytes(), "./tmp/cmd.sh")
+	if err != nil {
+		return err
+	}
+	
+	out.Reset()
+	command := New(context.TODO(), nil, "/bin/bash", "./tmp/cmd.sh")
+	
+	if err := command.Start(); err != nil {
+		return err
+	}
+	if err := command.Wait(); err != nil {
+		return err
+	}
+	
+	return nil
 }
 
 func RunDockerCmd(dockerArgs []string) (*bytes.Buffer, error) {

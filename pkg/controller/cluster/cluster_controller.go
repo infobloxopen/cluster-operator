@@ -143,8 +143,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			//	reqLogger.Error(err, "error waiting command")
 			//	return reconcile.Result{}, err
 			//}
-			out, err := k.CreateCluster(instance.Spec.KopsConfig)
-			reqLogger.Info(out)
+			err := k.CreateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				reqLogger.Error(err, "error creating kops command")
 				return reconcile.Result{}, err
@@ -153,15 +152,13 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
 		case clusteroperatorv1alpha1.ClusterUpdate:
 			reqLogger.Info("Phase: UPDATE")
-			out, err := k.UpdateCluster(instance.Spec.KopsConfig)
-			reqLogger.Info(out)
+			err := k.UpdateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
 			// We call rolling-update to apply these changes
-			out, err = k.RollingUpdateCluster(instance.Spec.KopsConfig)
-			reqLogger.Info(out)
+			err = k.RollingUpdateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -215,8 +212,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-		out, err := k.DeleteCluster(instance.Spec.KopsConfig)
-		reqLogger.Info(out)
+		err := k.DeleteCluster(instance.Spec.KopsConfig)
 		if err != nil {
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
 			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
