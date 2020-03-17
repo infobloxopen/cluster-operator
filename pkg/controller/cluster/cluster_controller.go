@@ -111,18 +111,9 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
-			config := instance.Spec.KopsConfig
-			// If KopsConfig is not defined in CR, use default
-			// TODO: Right now this only checks if the values are there. Eventually
-			// we want to use a few inputs to pull information from the CMDB or
-			// another controller that would hold the config information based on
-			// the supplied infra info
-			if config.Name == "" || config.MasterEc2 == "" || config.WorkerEc2 == "" || config.Vpc == "" ||
-				config.StateStore == "" || config.MasterCount < 1 || config.WorkerCount < 1 || len(config.Zones) < 1 {
-				instance.Spec.KopsConfig = GetKopsConfig(instance.Spec)
-				if err := r.client.Update(context.TODO(), instance); err != nil {
-					return reconcile.Result{}, err
-				}
+			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
+			if err := r.client.Update(context.TODO(), instance); err != nil {
+				return reconcile.Result{}, err
 			}
 		}
 
@@ -152,7 +143,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			//	reqLogger.Error(err, "error waiting command")
 			//	return reconcile.Result{}, err
 			//}
-			out, err := k.CreateCluster(GetKopsConfig(instance.Spec))
+			out, err := k.CreateCluster(instance.Spec.KopsConfig)
 			reqLogger.Info(out)
 			if err != nil {
 				reqLogger.Error(err, "error creating kops command")
@@ -162,14 +153,14 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
 		case clusteroperatorv1alpha1.ClusterUpdate:
 			reqLogger.Info("Phase: UPDATE")
-			out, err := k.UpdateCluster(GetKopsConfig(instance.Spec))
+			out, err := k.UpdateCluster(instance.Spec.KopsConfig)
 			reqLogger.Info(out)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
 			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
 			// We call rolling-update to apply these changes
-			out, err = k.RollingUpdateCluster(GetKopsConfig(instance.Spec))
+			out, err = k.RollingUpdateCluster(instance.Spec.KopsConfig)
 			reqLogger.Info(out)
 			if err != nil {
 				return reconcile.Result{}, err
@@ -245,19 +236,50 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	return reconcile.Result{}, nil
 }
 
-// Get Kops Config Object
-func GetKopsConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperatorv1alpha1.KopsConfig {
-
-	// Define a new Kops Cluster Config object if not specified
-	return clusteroperatorv1alpha1.KopsConfig{
-		// FIXME - Pickup . .soheil.belamaric.com and "s3://kops.state.seizadi.infoblox.com" from Operator Config
+// Get Kops Default Config Resource
+func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperatorv1alpha1.KopsConfig {
+	// If KopsConfig is not defined in CR, use default
+	// TODO: Right now this only checks if the values are there. Eventually
+	// we want to use a few inputs to pull information from the CMDB or
+	// another controller that would hold the config information based on
+	// the supplied infra info
+	
+	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
+		// FIXME - Pickup DNS zone from Operator Config
 		Name:        c.Name + ".soheil.belamaric.com",
-		MasterCount: c.KopsConfig.MasterCount,
-		MasterEc2:   c.KopsConfig.MasterEc2,
-		WorkerCount: c.KopsConfig.WorkerCount,
-		WorkerEc2:   c.KopsConfig.WorkerEc2,
+		MasterCount: 1,
+		MasterEc2:   "t2.micro",
+		WorkerCount: 2,
+		WorkerEc2:   "t2.micro",
+		// FIXME - Pickup state store from Operator Config
 		StateStore:  "s3://kops.state.seizadi.infoblox.com",
-		Vpc:         c.KopsConfig.Vpc,
-		Zones:       c.KopsConfig.Zones,
+		Vpc:         "vpc-0a75b33895655b46a",
+		Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
+	
+	if (c.KopsConfig.MasterCount > 0) {
+		defaultConfig.MasterCount = c.KopsConfig.MasterCount
+	}
+	
+	if len (c.KopsConfig.MasterEc2)  != 0 {
+		defaultConfig.MasterEc2 = c.KopsConfig.MasterEc2
+	}
+	
+	if (c.KopsConfig.WorkerCount) > 0 {
+		defaultConfig.WorkerCount = c.KopsConfig.WorkerCount
+	}
+	
+	if len (c.KopsConfig.WorkerEc2) > 0 {
+		defaultConfig.WorkerEc2 = c.KopsConfig.WorkerEc2
+	}
+	
+	if len (c.KopsConfig.Vpc) > 0 {
+		defaultConfig.Vpc = c.KopsConfig.Vpc
+	}
+	
+	if len(c.KopsConfig.Zones) > 0 {
+		c.KopsConfig.Zones = c.KopsConfig.Zones
+	}
+	
+	return defaultConfig
 }
