@@ -24,12 +24,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/infobloxopen/cluster-operator/kops/upup/pkg/fi"
-	"github.com/infobloxopen/cluster-operator/kops/upup/pkg/fi/cloudup"
-	"github.com/infobloxopen/cluster-operator/kops/upup/pkg/fi/utils"
-	"github.com/infobloxopen/cluster-operator/kops/upup/pkg/kutil"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	//"github.com/spf13/cobra"
+	//"github.com/spf13/viper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
@@ -37,26 +33,30 @@ import (
 	"k8s.io/kops/pkg/apis/kops"
 	"k8s.io/kops/pkg/commands"
 	"k8s.io/kops/pkg/kubeconfig"
-	"k8s.io/kubectl/pkg/util/i18n"
-	"k8s.io/kubectl/pkg/util/templates"
+	"k8s.io/kops/upup/pkg/fi"
+	"k8s.io/kops/upup/pkg/fi/cloudup"
+	"k8s.io/kops/upup/pkg/fi/utils"
+	"k8s.io/kops/upup/pkg/kutil"
+	//"k8s.io/kubectl/pkg/util/i18n"
+	//"k8s.io/kubectl/pkg/util/templates"
 )
 
-var (
-	updateClusterLong = templates.LongDesc(i18n.T(`
-	Create or update cloud or cluster resources to match current cluster state.  If the cluster or cloud resources already
-	exist this command may modify those resources.
-
-	If nodes need updating such as during a Kubernetes upgrade, a rolling-update may
-	be required as well.
-	`))
-
-	updateClusterExample = templates.Examples(i18n.T(`
-	# After cluster has been edited or upgraded, configure it with:
-	kops update cluster k8s-cluster.example.com --yes --state=s3://kops-state-1234 --yes
-	`))
-
-	updateClusterShort = i18n.T("Update a cluster.")
-)
+//var (
+//	updateClusterLong = templates.LongDesc(i18n.T(`
+//	Create or update cloud or cluster resources to match current cluster state.  If the cluster or cloud resources already
+//	exist this command may modify those resources.
+//
+//	If nodes need updating such as during a Kubernetes upgrade, a rolling-update may
+//	be required as well.
+//	`))
+//
+//	updateClusterExample = templates.Examples(i18n.T(`
+//	# After cluster has been edited or upgraded, configure it with:
+//	kops update cluster k8s-cluster.example.com --yes --state=s3://kops-state-1234 --yes
+//	`))
+//
+//	updateClusterShort = i18n.T("Update a cluster.")
+//)
 
 type UpdateClusterOptions struct {
 	Yes             bool
@@ -74,52 +74,15 @@ type UpdateClusterOptions struct {
 	LifecycleOverrides []string
 }
 
-func (o *UpdateClusterOptions) InitDefaults() {
-	o.Yes = false
-	o.Target = "direct"
-	o.Models = strings.Join(cloudup.CloudupModels, ",")
-	o.SSHPublicKey = ""
-	o.OutDir = ""
-	o.CreateKubecfg = true
-	o.RunTasksOptions.InitDefaults()
-}
-
-func NewCmdUpdateCluster(f *util.Factory, out io.Writer) *cobra.Command {
-	options := &UpdateClusterOptions{}
-	options.InitDefaults()
-
-	cmd := &cobra.Command{
-		Use:     "cluster",
-		Short:   updateClusterShort,
-		Long:    updateClusterLong,
-		Example: updateClusterExample,
-		Run: func(cmd *cobra.Command, args []string) {
-			err := rootCommand.ProcessArgs(args)
-			if err != nil {
-				exitWithError(err)
-			}
-
-			clusterName := rootCommand.ClusterName()
-
-			if _, err := RunUpdateCluster(f, clusterName, out, options); err != nil {
-				exitWithError(err)
-			}
-		},
-	}
-
-	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", options.Yes, "Create cloud resources, without --yes update is in dry run mode")
-	cmd.Flags().StringVar(&options.Target, "target", options.Target, "Target - direct, terraform, cloudformation")
-	cmd.Flags().StringVar(&options.Models, "model", options.Models, "Models to apply (separate multiple models with commas)")
-	cmd.Flags().StringVar(&options.SSHPublicKey, "ssh-public-key", options.SSHPublicKey, "SSH public key to use (deprecated: use kops create secret instead)")
-	cmd.Flags().StringVar(&options.OutDir, "out", options.OutDir, "Path to write any local output")
-	cmd.Flags().BoolVar(&options.CreateKubecfg, "create-kube-config", options.CreateKubecfg, "Will control automatically creating the kube config file on your local filesystem")
-	cmd.Flags().StringVar(&options.Phase, "phase", options.Phase, "Subset of tasks to run: "+strings.Join(cloudup.Phases.List(), ", "))
-	cmd.Flags().StringSliceVar(&options.LifecycleOverrides, "lifecycle-overrides", options.LifecycleOverrides, "comma separated list of phase overrides, example: SecurityGroups=Ignore,InternetGateway=ExistsAndWarnIfChanges")
-	viper.BindPFlag("lifecycle-overrides", cmd.Flags().Lookup("lifecycle-overrides"))
-	viper.BindEnv("lifecycle-overrides", "KOPS_LIFECYCLE_OVERRIDES")
-
-	return cmd
-}
+//func (o *UpdateClusterOptions) InitDefaults() {
+//	o.Yes = false
+//	o.Target = "direct"
+//	o.Models = strings.Join(cloudup.CloudupModels, ",")
+//	o.SSHPublicKey = ""
+//	o.OutDir = ""
+//	o.CreateKubecfg = true
+//	o.RunTasksOptions.InitDefaults()
+//}
 
 type UpdateClusterResults struct {
 	// Target is the fi.Target we will operated against.  This can be used to get dryrun results (primarily for tests)
@@ -219,7 +182,7 @@ func RunUpdateCluster(f *util.Factory, clusterName string, out io.Writer, c *Upd
 	for _, override := range c.LifecycleOverrides {
 		values := strings.Split(override, "=")
 		if len(values) != 2 {
-			return results, fmt.Errorf("Incorrect syntax for lifecyle-overrides, correct syntax is TaskName=lifecycleName, override provided: %q", override)
+			return results, fmt.Errorf("incorrect syntax for lifecyle-overrides, correct syntax is TaskName=lifecycleName, override provided: %q", override)
 		}
 
 		taskName := values[0]
@@ -368,7 +331,7 @@ func RunUpdateCluster(f *util.Factory, clusterName string, out io.Writer, c *Upd
 				}
 			}
 			fmt.Fprintf(sb, " * the admin user is specific to Debian. If not using Debian please use the appropriate user based on your OS.\n")
-			fmt.Fprintf(sb, " * read about installing addons at: https://github.com/kubernetes/kops/blob/master/docs/operations/addons.md.\n")
+			fmt.Fprintf(sb, " * read about installing addons at: https://kops.sigs.k8s.io/operations/addons.\n")
 			fmt.Fprintf(sb, "\n")
 		}
 
