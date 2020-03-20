@@ -1,0 +1,82 @@
+name: Go
+on: [push]
+jobs:
+  build:
+    env:
+      GO111MODULE: auto
+      SRC: src/github.com/${{github.repository}}
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Dump GitHub context
+      env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
+    - name: Dump job context
+      env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+      run: echo "$JOB_CONTEXT"
+    - name: Dump steps context
+      env:
+        STEPS_CONTEXT: ${{ toJson(steps) }}
+      run: echo "$STEPS_CONTEXT"
+    - name: Dump runner context
+      env:
+        RUNNER_CONTEXT: ${{ toJson(runner) }}
+      run: echo "$RUNNER_CONTEXT"
+    - name: Dump strategy context
+      env:
+        STRATEGY_CONTEXT: ${{ toJson(strategy) }}
+      run: echo "$STRATEGY_CONTEXT"
+    - name: Dump matrix context
+      env:
+        MATRIX_CONTEXT: ${{ toJson(matrix) }}
+      run: echo "$MATRIX_CONTEXT"
+
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 100 # support git describe --always
+        path: src/github.com/${{ github.repository }}
+
+    # https://github.com/actions/setup-go#setup-go
+    - name: Set up Go
+      uses: actions/setup-go@v1
+      with:
+        go-version: '1.12'
+
+    - name: Machine setup
+      shell: bash
+      env:
+        GOPATH: ${{ github.workspace }}
+      working-directory: ${{ github.workspace }}/src/github.com/infobloxopen/cluster-operator
+      run: |
+        git fetch --depth=100 origin +refs/tags/*:refs/tags/*
+        echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+        # Setups up Github access with a provided Pat
+        # The Action included one is only good for the action's repo
+        #echo machine github.com login ${{ secrets.github_pat }} > ~/.netrc
+        go env
+        echo "::set-env name=GOPATH::$(go env GOPATH)"
+        echo "::add-path::$(go env GOPATH)/bin"
+
+    - name: Unit tests
+      working-directory: ${{ github.workspace }}/src/github.com/infobloxopen/cluster-operator
+      run: |
+        echo Skipping
+        make test
+
+    # - name: Integration Tests
+    #   working-directory: ${{ github.workspace }}/src/github.com/infobloxopen/cluster-operator
+    #   run: |
+    #     make kind-deploy integration-tests
+
+    - name: Integration Tests failure
+      if: failure()
+      run: |
+        timeout 10s echo failure stuff
+
+    # - name: Push Chart
+    #   working-directory: ${{ github.workspace }}/src/github.com/infobloxopen/cluster-operator
+    #   run: |
+    #     make push

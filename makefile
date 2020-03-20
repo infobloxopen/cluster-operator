@@ -52,3 +52,7 @@ delete:
 
 generate:
 	operator-sdk generate k8s # codegen
+
+test:
+	go build ./...
+	git diff --exit-code
