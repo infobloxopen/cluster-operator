@@ -129,21 +129,10 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// PENDING -> SETUP -> DONE
 		switch instance.Status.Phase {
 		case clusteroperatorv1alpha1.ClusterPending:
+			// Both updates and new clusters start with Kops replace
+			// Adds the manifest to the kops state store without applying changes
 			reqLogger.Info("Phase: PENDING")
-			//cmd, err := k.CreateCluster(context.TODO(), GetKopsConfig(instance.Spec.Name))
-			//if err != nil {
-			//	reqLogger.Error(err, "error creating kops command")
-			//	return reconcile.Result{}, err
-			//}
-			//if err := cmd.Start(); err != nil {
-			//	reqLogger.Error(err, "error starting command")
-			//	return reconcile.Result{}, err
-			//}
-			//if err := cmd.Wait(); err != nil {
-			//	reqLogger.Error(err, "error waiting command")
-			//	return reconcile.Result{}, err
-			//}
-			err := k.CreateCluster(instance.Spec.KopsConfig)
+			err := k.ReplaceCluster(instance.Spec)
 			if err != nil {
 				reqLogger.Error(err, "error creating kops command")
 				return reconcile.Result{}, err
@@ -151,6 +140,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			reqLogger.Info("Cluster Created")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
 		case clusteroperatorv1alpha1.ClusterUpdate:
+			// Kops update is required for both new and updated cluster configurations
 			reqLogger.Info("Phase: UPDATE")
 			err := k.UpdateCluster(instance.Spec.KopsConfig)
 			if err != nil {
@@ -240,17 +230,18 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 	// another controller that would hold the config information based on
 	// the supplied infra info
 	
+	// Due to changes to use Kops manifests, the only required fields are Name and StateStore
 	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
 		// FIXME - Pickup DNS zone from Operator Config
 		Name:        c.Name + ".soheil.belamaric.com",
-		MasterCount: 1,
-		MasterEc2:   "t2.micro",
-		WorkerCount: 2,
-		WorkerEc2:   "t2.micro",
+		// MasterCount: 1,
+		// MasterEc2:   "t2.micro",
+		// WorkerCount: 2,
+		// WorkerEc2:   "t2.micro",
 		// FIXME - Pickup state store from Operator Config
 		StateStore:  "s3://kops.state.seizadi.infoblox.com",
-		Vpc:         "vpc-0a75b33895655b46a",
-		Zones:       []string{"us-east-2a", "us-east-2b"},
+		// Vpc:         "vpc-0a75b33895655b46a",
+		// Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
 	
 	if (c.KopsConfig.MasterCount > 0) {

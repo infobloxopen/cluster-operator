@@ -5,13 +5,103 @@ metadata:
   namespace: {{ .Name }}
 spec:
   name: {{ .Name }}
-  kops_config:
-    master_count: 1
-    master_ec2: t2.micro
-    vpc: vpc-0a75b33895655b46a
-    worker_count: 2
-    worker_ec2: t2.micro
-    zones:
-    - us-east-2a
-    - us-east-2b
----
+  config: |
+    apiVersion: kops.k8s.io/v1alpha2
+    kind: Cluster
+    metadata:
+      name: {{ .Name }}.soheil.belamaric.com
+    spec:
+      api:
+        dns: {}
+      authorization:
+        rbac: {}
+      channel: stable
+      cloudProvider: aws
+      configBase: s3://kops.state.seizadi.infoblox.com/{{ .Name }}.soheil.belamaric.com
+      etcdClusters:
+      - cpuRequest: 200m
+        etcdMembers:
+        - instanceGroup: master-us-east-2a
+          name: a
+        memoryRequest: 100Mi
+        name: main
+      - cpuRequest: 100m
+        etcdMembers:
+        - instanceGroup: master-us-east-2a
+          name: a
+        memoryRequest: 100Mi
+        name: events
+      iam:
+        allowContainerRegistry: true
+        legacy: false
+      kubelet:
+        anonymousAuth: false
+      kubernetesApiAccess:
+      - 0.0.0.0/0
+      kubernetesVersion: 1.16.7
+      masterPublicName: api.{{ .Name }}.soheil.belamaric.com
+      networkCIDR: 172.17.16.0/21
+      networkID: vpc-0a75b33895655b46a
+      networking:
+        kubenet: {}
+      nonMasqueradeCIDR: 100.64.0.0/10
+      sshAccess:
+      - 0.0.0.0/0
+      subnets:
+      - cidr: 172.17.17.0/24
+        name: us-east-2a
+        type: Public
+        zone: us-east-2a
+      - cidr: 172.17.18.0/24
+        name: us-east-2b
+        type: Public
+        zone: us-east-2b
+      topology:
+        dns:
+          type: Public
+        masters: public
+        nodes: public
+    ---
+    apiVersion: kops.k8s.io/v1alpha2
+    kind: InstanceGroup
+    metadata:
+      labels:
+        kops.k8s.io/cluster: {{ .Name }}.soheil.belamaric.com
+      name: master-us-east-2a
+    spec:
+      image: kope.io/k8s-1.16-debian-stretch-amd64-hvm-ebs-2020-01-17
+      machineType: t2.micro
+      maxSize: 1
+      minSize: 1
+      nodeLabels:
+        kops.k8s.io/instancegroup: master-us-east-2a
+      role: Master
+      subnets:
+      - us-east-2a
+    ---
+    apiVersion: kops.k8s.io/v1alpha2
+    kind: InstanceGroup
+    metadata:
+      labels:
+        kops.k8s.io/cluster: {{ .Name }}.soheil.belamaric.com
+      name: nodes
+    spec:
+      image: kope.io/k8s-1.16-debian-stretch-amd64-hvm-ebs-2020-01-17
+      machineType: t2.micro
+      maxSize: 2
+      minSize: 2
+      nodeLabels:
+        kops.k8s.io/instancegroup: nodes
+      role: Node
+      subnets:
+      - us-east-2a
+      - us-east-2b
+    ---
+    apiVersion: kops/v1alpha2
+    kind: SSHCredential
+    metadata:
+      labels:
+        kops.k8s.io/cluster: {{ .Name }}.soheil.belamaric.com
+    spec:
+      publicKey: "{{ .sshKey }}"
+

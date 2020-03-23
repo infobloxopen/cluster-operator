@@ -110,6 +110,8 @@ type ClusterSpec struct {
 	// Cannot be updated.
 	Name string `json:"name,omitempty"`
 	// Kops Cluster Config
+	Config string `json:"config,omitempty"`
+	// Kops Cluster Config
 	KopsConfig KopsConfig `json:"kops_config,omitempty"`
 }
 
