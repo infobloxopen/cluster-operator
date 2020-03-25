@@ -296,6 +296,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			return reconcile.Result{}, err
 		}
 
+		//TODO: error when resource edited and requeued, but already deleted. Do we want that?
+
 	}
 	// Stop reconciliation as the item is being deleted
 	return reconcile.Result{}, nil
