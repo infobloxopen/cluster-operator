@@ -235,6 +235,7 @@ func RunRollingUpdateCluster(f *util.Factory, out io.Writer, options *RollingUpd
 
 	var nodes []v1.Node
 	var k8sClient kubernetes.Interface
+
 	if !options.CloudOnly {
 		k8sClient, err = kubernetes.NewForConfig(config)
 		if err != nil {

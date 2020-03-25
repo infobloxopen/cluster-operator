@@ -108,13 +108,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
 
-	// // TODO - We should maybe catch lack of kops configuration earlier in operator startup
-	k, err := kops.NewKops()
-	if err != nil {
-		reqLogger.Error(err, "kops.NewKops Failed")
-		return reconcile.Result{}, err
-	}
-
 	kc := GetKopsConfig(instance.Spec)
 
 	// If the cluster is not waiting for deletion, handle it normally
@@ -150,21 +143,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		switch instance.Status.Phase {
 		case clusteroperatorv1alpha1.ClusterPending:
 			reqLogger.Info("Phase: PENDING")
-			//cmd, err := k.CreateCluster(context.TODO(), GetKopsConfig(instance.Spec.Name))
-			//if err != nil {
-			//	reqLogger.Error(err, "error creating kops command")
-			//	return reconcile.Result{}, err
-			//}
-			//if err := cmd.Start(); err != nil {
-			//	reqLogger.Error(err, "error starting command")
-			//	return reconcile.Result{}, err
-			//}
-			//if err := cmd.Wait(); err != nil {
-			//	reqLogger.Error(err, "error waiting command")
-			//	return reconcile.Result{}, err
-			//}
-			// out, err := k.CreateCluster(GetKopsConfig(instance.Spec))
-			// reqLogger.Info(out)
 
 			//TODO: use replace cluster instead of create or update. Will get file from CR (Shaun working on that)
 			// options := &kops.ReplaceOptions{Filenames: []string{"deploy/test.yaml"}}
@@ -206,20 +184,18 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				return reconcile.Result{}, err
 			}
 
+			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
+			// We call rolling-update to apply these changes
 			//TODO: Right now, using defaults for intervals. Need to make changable
 			rollingOptions := &kops.RollingUpdateOptions{ClusterName: kc.Name}
 			rollingOptions.InitDefaults()
 
 			factory = util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
 			err = kops.RunRollingUpdateCluster(factory, os.Stdout, rollingOptions)
-
-			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
-			// We call rolling-update to apply these changes
-			// out, err = k.RollingUpdateCluster(GetKopsConfig(instance.Spec))
-			// reqLogger.Info(out)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+
 			reqLogger.Info("Cluster Updated")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:
@@ -244,11 +220,18 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				instance.Status.KopsStatus.Nodes = status.Nodes
 				reqLogger.Info("Cluster Created")
 				instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
-				config, err := k.GetKubeConfig(instance.Spec.KopsConfig)
+
+				configOptions := &kops.ExportKubecfgOptions{KubeConfigPath: "tmp/config.yaml"}
+				clusterName := []string{kc.Name}
+
+				factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+				var config *clusteroperatorv1alpha1.KubeConfig
+				config, err := kops.RunExportKubecfg(factory, os.Stdout, configOptions, clusterName)
 				if err != nil {
 					return reconcile.Result{}, err
 				}
-				instance.Status.KubeConfig = config
+
+				instance.Status.KubeConfig = *config
 				reqLogger.Info("KUBECONFIG Updated")
 			} else {
 				// FIXME - If we get this state try validate again!!!
