@@ -1,25 +1,3 @@
-# ISSUES
-I am able to create my own package with kops commands in the kops folder, however the cmd files from the kops repo require many dependencies from the kops repo. I am seeing the errors below as of now. The issue is that the functions require some bindata generated files that are not included in the repo and require running a make command. These files cannot be added to the go module copy of the repo, so I tried manually adding them to the kops directory. This is also not working since files in the kops repo would need to reference this new package that I handmade.
-
-k8s.io/component-base/metrics/legacyregistry
-../../pkg/mod/k8s.io/component-base@v0.0.0-20191016111319-039242c015a9/metrics/legacyregistry/registry.go:44:9: undefined: prometheus.InstrumentHandler
- github.com/infobloxopen/cluster-operator/kops/upup/pkg/fi/cloudup/terraform
-kops/upup/pkg/fi/cloudup/terraform/target.gThese o:262:5: undefined: featureflag.TerraformJSON
-kops/upup/pkg/fi/cloudup/terraform/target.go:286:5: undefined: featureflag.TerraformJSON
- github.com/infobloxopen/cluster-operator/kops/upup/pkg/fi/cloudup/do
-kops/upup/pkg/fi/cloudup/do/cloud.go:40:2: cannot use *digitalocean.Cloud value as type "github.com/infobloxopen/cluster-operator/kops/upup/pkg/fi".Cloud in return argument:
-        *digitalocean.Cloud does not implement "github.com/infobloxopen/cluster-operator/kops/upup/pkg/fi".Cloud (missing DetachInstance method)
- k8s.io/kops/dnsprovider/pkg/dnsprovider/providers/openstack/designate
-../../pkg/mod/k8s.io/kops@v1.16.0/dnsprovider/pkg/dnsprovider/providers/openstack/designate/rrchangeset.go:86:4: cannot use int(upsert.Ttl()) (type int) as type *int in field value
- k8s.io/kops/upup/models
-../../pkg/mod/k8s.io/kops@v1.16.0/upup/models/vfs.go:71:15: undefined: Asset
-../../pkg/mod/k8s.io/kops@v1.16.0/upup/models/vfs.go:82:16: undefined: AssetDir
-../../pkg/mod/k8s.io/kops@v1.16.0/upup/models/vfs.go:107:16: undefined: AssetDir
-FATA[0002] Failed to run operator locally: failed to build operator to run locally: failed to exec []string{"go", "build", "-o", "build/_output/bin/cluster-operator-local", "github.com/infobloxopen/cluster-operator/cmd/manager"}: exit status 2 
-make: *** [operator-todo] Error 1
-
-The main error I was trying to address was the undefined: Asset errors and the like. There are other errors as well.
-
 # Cluster Operator
 Project that provisions kuberneres (k8s) cluster using k8s 
 [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).

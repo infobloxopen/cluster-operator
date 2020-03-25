@@ -189,12 +189,9 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 		case clusteroperatorv1alpha1.ClusterUpdate:
 			reqLogger.Info("Phase: UPDATE")
-			// out, err := k.UpdateCluster(GetKopsConfig(instance.Spec))
-			// reqLogger.Info(out)
 
 			//TODO: use replace cluster instead of create or update. Will get file from CR (Shaun working on that)
 			// options := &kops.ReplaceOptions{Filenames: []string{"deploy/test.yaml"}}
-
 			// factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
 			// err = kops.RunReplace(factory, os.Stdout, options)
 
@@ -281,8 +278,10 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-		out, err := k.DeleteCluster(instance.Spec.KopsConfig)
-		reqLogger.Info(out)
+		deleteOptions := &kops.DeleteClusterOptions{ClusterName: kc.Name, Yes: true}
+
+		factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+		err := kops.RunDeleteCluster(factory, os.Stdout, deleteOptions)
 		if err != nil {
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
 			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
