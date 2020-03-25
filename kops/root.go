@@ -18,11 +18,13 @@ package kops
 
 import (
 	"bytes"
+	// goflag "flag"
 	"fmt"
+	// "io"
 	"os"
 	"path/filepath"
 	"strings"
-	
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -32,6 +34,9 @@ import (
 	"k8s.io/kops/cmd/kops/util"
 	kopsapi "k8s.io/kops/pkg/apis/kops"
 	"k8s.io/kops/pkg/client/simple"
+
+	// "k8s.io/kops/pkg/kubeconfig"
+	// "k8s.io/kops/upup/pkg/kutil"
 	"k8s.io/kubectl/pkg/util/i18n"
 	"k8s.io/kubectl/pkg/util/templates"
 )
@@ -86,6 +91,69 @@ var rootCommand = RootCmd{
 		Long:  rootLong,
 	},
 }
+
+// func Execute() {
+// 	goflag.Set("logtostderr", "true")
+// 	goflag.CommandLine.Parse([]string{})
+// 	if err := rootCommand.cobraCommand.Execute(); err != nil {
+// 		exitWithError(err)
+// 	}
+// }
+
+// func init() {
+// 	cobra.OnInitialize(initConfig)
+
+// 	klog.InitFlags(nil)
+
+// 	factory := util.NewFactory(&rootCommand.FactoryOptions)
+// 	rootCommand.factory = factory
+
+// 	NewCmdRoot(factory, os.Stdout)
+// }
+
+// func NewCmdRoot(f *util.Factory, out io.Writer) *cobra.Command {
+
+// 	cmd := rootCommand.cobraCommand
+
+// 	//cmd.PersistentFlags().AddGoFlagSet(goflag.CommandLine)
+// 	goflag.CommandLine.VisitAll(func(goflag *goflag.Flag) {
+// 		switch goflag.Name {
+// 		case "cloud-provider-gce-lb-src-cidrs":
+// 			// Skip; this is dragged in by the google cloudprovider dependency
+
+// 		default:
+// 			cmd.PersistentFlags().AddGoFlag(goflag)
+// 		}
+// 	})
+
+// 	cmd.PersistentFlags().StringVar(&rootCommand.configFile, "config", "", "yaml config file (default is $HOME/.kops.yaml)")
+// 	viper.BindPFlag("config", cmd.PersistentFlags().Lookup("config"))
+// 	viper.SetDefault("config", "$HOME/.kops.yaml")
+
+// 	cmd.PersistentFlags().StringVar(&rootCommand.RegistryPath, "state", "", "Location of state storage (kops 'config' file). Overrides KOPS_STATE_STORE environment variable")
+// 	viper.BindPFlag("KOPS_STATE_STORE", cmd.PersistentFlags().Lookup("state"))
+// 	viper.BindEnv("KOPS_STATE_STORE")
+
+// 	defaultClusterName := os.Getenv("KOPS_CLUSTER_NAME")
+// 	cmd.PersistentFlags().StringVarP(&rootCommand.clusterName, "name", "", defaultClusterName, "Name of cluster. Overrides KOPS_CLUSTER_NAME environment variable")
+
+// 	// create subcommands
+// 	cmd.AddCommand(NewCmdCompletion(f, out))
+// 	cmd.AddCommand(NewCmdCreate(f, out))
+// 	cmd.AddCommand(NewCmdDelete(f, out))
+// 	cmd.AddCommand(NewCmdEdit(f, out))
+// 	cmd.AddCommand(NewCmdExport(f, out))
+// 	cmd.AddCommand(NewCmdGet(f, out))
+// 	cmd.AddCommand(NewCmdUpdate(f, out))
+// 	cmd.AddCommand(NewCmdReplace(f, out))
+// 	cmd.AddCommand(NewCmdRollingUpdate(f, out))
+// 	cmd.AddCommand(NewCmdSet(f, out))
+// 	cmd.AddCommand(NewCmdToolbox(f, out))
+// 	cmd.AddCommand(NewCmdValidate(f, out))
+// 	cmd.AddCommand(NewCmdVersion(f, out))
+
+// 	return cmd
+// }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
@@ -156,7 +224,7 @@ func (c *RootCmd) ProcessArgs(args []string) error {
 	fmt.Printf("For example: use `--bastion=true` or `--bastion`, not `--bastion true`\n\n")
 
 	if len(args) == 1 {
-		return fmt.Errorf("cannot specify cluster via --name and positional argument")
+		return fmt.Errorf("Cannot specify cluster via --name and positional argument")
 	}
 	return fmt.Errorf("expected a single <clustername> to be passed as an argument")
 }
@@ -201,9 +269,29 @@ func ClusterNameFromKubecfg() string {
 	//	fmt.Fprintf(os.Stderr, "Using cluster from kubectl context: %s\n\n", config.Name)
 	//	c.clusterName = config.Name
 	//}
-
 	return clusterName
 }
+
+// func readKubectlClusterConfig() (*kubeconfig.KubectlClusterWithName, error) {
+// 	kubectl := &kutil.Kubectl{}
+// 	context, err := kubectl.GetCurrentContext()
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error getting current context from kubectl: %v", err)
+// 	}
+// 	klog.V(4).Infof("context = %q", context)
+
+// 	config, err := kubectl.GetConfig(true)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error getting current config from kubectl: %v", err)
+// 	}
+
+// 	// Minify should have done this
+// 	if len(config.Clusters) != 1 {
+// 		return nil, fmt.Errorf("expected exactly one cluster in kubectl config, found %d", len(config.Clusters))
+// 	}
+
+// 	return config.Clusters[0], nil
+// }
 
 func (c *RootCmd) Clientset() (simple.Clientset, error) {
 	return c.factory.Clientset()
@@ -219,8 +307,9 @@ func (c *RootCmd) Cluster() (*kopsapi.Cluster, error) {
 }
 
 func GetCluster(factory Factory, clusterName string) (*kopsapi.Cluster, error) {
+
 	if clusterName == "" {
-		return nil, field.Required(field.NewPath("clusterName"), "Cluster name is required")
+		return nil, field.Required(field.NewPath("ClusterName"), "Cluster name is required")
 	}
 
 	clientset, err := factory.Clientset()

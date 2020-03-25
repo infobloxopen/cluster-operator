@@ -74,15 +74,15 @@ type UpdateClusterOptions struct {
 	LifecycleOverrides []string
 }
 
-//func (o *UpdateClusterOptions) InitDefaults() {
-//	o.Yes = false
-//	o.Target = "direct"
-//	o.Models = strings.Join(cloudup.CloudupModels, ",")
-//	o.SSHPublicKey = ""
-//	o.OutDir = ""
-//	o.CreateKubecfg = true
-//	o.RunTasksOptions.InitDefaults()
-//}
+func (o *UpdateClusterOptions) InitDefaults() {
+	o.Yes = true
+	o.Target = "direct"
+	o.Models = strings.Join(cloudup.CloudupModels, ",")
+	o.SSHPublicKey = ""
+	o.OutDir = ""
+	o.CreateKubecfg = false
+	o.RunTasksOptions.InitDefaults()
+}
 
 type UpdateClusterResults struct {
 	// Target is the fi.Target we will operated against.  This can be used to get dryrun results (primarily for tests)
@@ -180,6 +180,7 @@ func RunUpdateCluster(f *util.Factory, clusterName string, out io.Writer, c *Upd
 	lifecycleOverrideMap := make(map[string]fi.Lifecycle)
 
 	for _, override := range c.LifecycleOverrides {
+
 		values := strings.Split(override, "=")
 		if len(values) != 2 {
 			return results, fmt.Errorf("incorrect syntax for lifecyle-overrides, correct syntax is TaskName=lifecycleName, override provided: %q", override)
@@ -195,7 +196,6 @@ func RunUpdateCluster(f *util.Factory, clusterName string, out io.Writer, c *Upd
 
 		lifecycleOverrideMap[taskName] = lifecycleOverride
 	}
-
 	var instanceGroups []*kops.InstanceGroup
 	{
 		list, err := clientset.InstanceGroupsFor(cluster).List(metav1.ListOptions{})
@@ -249,7 +249,6 @@ func RunUpdateCluster(f *util.Factory, clusterName string, out io.Writer, c *Upd
 	}
 
 	firstRun := false
-
 	if !isDryrun && c.CreateKubecfg {
 		hasKubecfg, err := hasKubecfg(cluster.ObjectMeta.Name)
 		if err != nil {
@@ -278,7 +277,6 @@ func RunUpdateCluster(f *util.Factory, clusterName string, out io.Writer, c *Upd
 			klog.Infof("kubecfg cert not found; won't export kubecfg")
 		}
 	}
-
 	if !isDryrun {
 		sb := new(bytes.Buffer)
 

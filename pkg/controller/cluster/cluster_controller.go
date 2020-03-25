@@ -1,17 +1,25 @@
 package cluster
 
 import (
+	// "context"
+
 	"context"
+	"os"
 
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+	"k8s.io/kops/cmd/kops/util"
+
 	"github.com/infobloxopen/cluster-operator/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+
+	// "k8s.io/apimachinery/pkg/api/errors"
 
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+
 	//"k8s.io/kops/cmd/kops"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -100,21 +108,32 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
 
-	// TODO - We should maybe catch lack of kops configuration earlier in operator startup
+	// // TODO - We should maybe catch lack of kops configuration earlier in operator startup
 	k, err := kops.NewKops()
 	if err != nil {
 		reqLogger.Error(err, "kops.NewKops Failed")
 		return reconcile.Result{}, err
 	}
 
-	//If the cluster is not waiting for deletion, handle it normally
+	kc := GetKopsConfig(instance.Spec)
+
+	// If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
-			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
-			if err := r.client.Update(context.TODO(), instance); err != nil {
-				return reconcile.Result{}, err
+			config := instance.Spec.KopsConfig
+			// If KopsConfig is not defined in CR, use default
+			// TODO: Right now this only checks if the values are there. Eventually
+			// we want to use a few inputs to pull information from the CMDB or
+			// another controller that would hold the config information based on
+			// the supplied infra info
+			if config.Name == "" || config.MasterEc2 == "" || config.WorkerEc2 == "" || config.Vpc == "" ||
+				config.StateStore == "" || config.MasterCount < 1 || config.WorkerCount < 1 || len(config.Zones) < 1 {
+				instance.Spec.KopsConfig = GetKopsConfig(instance.Spec)
+				if err := r.client.Update(context.TODO(), instance); err != nil {
+					return reconcile.Result{}, err
+				}
 			}
 		}
 
@@ -144,22 +163,63 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			//	reqLogger.Error(err, "error waiting command")
 			//	return reconcile.Result{}, err
 			//}
-			err := k.CreateCluster(instance.Spec.KopsConfig)
+			// out, err := k.CreateCluster(GetKopsConfig(instance.Spec))
+			// reqLogger.Info(out)
+
+			//TODO: use replace cluster instead of create or update. Will get file from CR (Shaun working on that)
+			// options := &kops.ReplaceOptions{Filenames: []string{"deploy/test.yaml"}}
+
+			// factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+			// err = kops.RunReplace(factory, os.Stdout, options)
+
+			//creating cluster
+			options := &kops.CreateClusterOptions{}
+			options.Init(kc)
+
+			//create new facory options first to pass in
+			factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+			err := kops.RunCreateCluster(factory, os.Stdout, options)
+
 			if err != nil {
-				reqLogger.Error(err, "error creating kops command")
+				reqLogger.Error(err, "error creating cluster")
 				return reconcile.Result{}, err
 			}
 			reqLogger.Info("Cluster Created")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
+
 		case clusteroperatorv1alpha1.ClusterUpdate:
 			reqLogger.Info("Phase: UPDATE")
-			err := k.UpdateCluster(instance.Spec.KopsConfig)
+			// out, err := k.UpdateCluster(GetKopsConfig(instance.Spec))
+			// reqLogger.Info(out)
+
+			//TODO: use replace cluster instead of create or update. Will get file from CR (Shaun working on that)
+			// options := &kops.ReplaceOptions{Filenames: []string{"deploy/test.yaml"}}
+
+			// factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+			// err = kops.RunReplace(factory, os.Stdout, options)
+
+			updateOptions := &kops.UpdateClusterOptions{}
+			updateOptions.InitDefaults()
+
+			//create new facory options first to pass in
+			factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+			_, err := kops.RunUpdateCluster(factory, kc.Name, os.Stdout, updateOptions)
+
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+
+			//TODO: Right now, using defaults for intervals. Need to make changable
+			rollingOptions := &kops.RollingUpdateOptions{ClusterName: kc.Name}
+			rollingOptions.InitDefaults()
+
+			factory = util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+			err = kops.RunRollingUpdateCluster(factory, os.Stdout, rollingOptions)
+
 			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
 			// We call rolling-update to apply these changes
-			err = k.RollingUpdateCluster(instance.Spec.KopsConfig)
+			// out, err = k.RollingUpdateCluster(GetKopsConfig(instance.Spec))
+			// reqLogger.Info(out)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -167,7 +227,15 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
-			status, err := k.ValidateCluster(instance.Spec.KopsConfig)
+
+			validateOptions := &kops.ValidateClusterOptions{}
+			validateOptions.InitDefaults()
+			clusterName := []string{kc.Name}
+
+			factory := util.NewFactory(&util.FactoryOptions{RegistryPath: kc.StateStore})
+			status, err := kops.RunValidateCluster(factory, clusterName, os.Stdout, validateOptions)
+
+			// status, err := k.ValidateCluster(instance.Spec.KopsConfig)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -213,7 +281,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 		// our finalizer is present, so delete cluster first
-		err := k.DeleteCluster(instance.Spec.KopsConfig)
+		out, err := k.DeleteCluster(instance.Spec.KopsConfig)
+		reqLogger.Info(out)
 		if err != nil {
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
 			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
@@ -233,50 +302,19 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	return reconcile.Result{}, nil
 }
 
-// Get Kops Default Config Resource
-func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperatorv1alpha1.KopsConfig {
-	// If KopsConfig is not defined in CR, use default
-	// TODO: Right now this only checks if the values are there. Eventually
-	// we want to use a few inputs to pull information from the CMDB or
-	// another controller that would hold the config information based on
-	// the supplied infra info
-	
-	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
-		// FIXME - Pickup DNS zone from Operator Config
+// Get Kops Config Object
+func GetKopsConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperatorv1alpha1.KopsConfig {
+
+	// Define a new Kops Cluster Config object if not specified
+	return clusteroperatorv1alpha1.KopsConfig{
+		// FIXME - Pickup . .soheil.belamaric.com and "s3://kops.state.seizadi.infoblox.com" from Operator Config
 		Name:        c.Name + ".soheil.belamaric.com",
-		MasterCount: 1,
-		MasterEc2:   "t2.micro",
-		WorkerCount: 2,
-		WorkerEc2:   "t2.micro",
-		// FIXME - Pickup state store from Operator Config
+		MasterCount: c.KopsConfig.MasterCount,
+		MasterEc2:   c.KopsConfig.MasterEc2,
+		WorkerCount: c.KopsConfig.WorkerCount,
+		WorkerEc2:   c.KopsConfig.WorkerEc2,
 		StateStore:  "s3://kops.state.seizadi.infoblox.com",
-		Vpc:         "vpc-0a75b33895655b46a",
-		Zones:       []string{"us-east-2a", "us-east-2b"},
+		Vpc:         c.KopsConfig.Vpc,
+		Zones:       c.KopsConfig.Zones,
 	}
-	
-	if (c.KopsConfig.MasterCount > 0) {
-		defaultConfig.MasterCount = c.KopsConfig.MasterCount
-	}
-	
-	if len (c.KopsConfig.MasterEc2)  != 0 {
-		defaultConfig.MasterEc2 = c.KopsConfig.MasterEc2
-	}
-	
-	if (c.KopsConfig.WorkerCount) > 0 {
-		defaultConfig.WorkerCount = c.KopsConfig.WorkerCount
-	}
-	
-	if len (c.KopsConfig.WorkerEc2) > 0 {
-		defaultConfig.WorkerEc2 = c.KopsConfig.WorkerEc2
-	}
-	
-	if len (c.KopsConfig.Vpc) > 0 {
-		defaultConfig.Vpc = c.KopsConfig.Vpc
-	}
-	
-	if len(c.KopsConfig.Zones) > 0 {
-		c.KopsConfig.Zones = c.KopsConfig.Zones
-	}
-	
-	return defaultConfig
 }

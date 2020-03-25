@@ -1,0 +1,56 @@
+apiVersion: kops.k8s.io/v1alpha2
+kind: Cluster
+metadata:
+  creationTimestamp: "2020-03-20T20:49:54Z"
+  name: hryan.soheil.belamaric.com
+spec:
+  api:
+    dns: {}
+  authorization:
+    rbac: {}
+  channel: stable
+  cloudProvider: aws
+  configBase: s3://kops.state.seizadi.infoblox.com/hryan.soheil.belamaric.com
+  etcdClusters:
+  - cpuRequest: 300m
+    etcdMembers:
+    - instanceGroup: master-us-east-2a
+      name: a
+    memoryRequest: 100Mi
+    name: main
+  - cpuRequest: 100m
+    etcdMembers:
+    - instanceGroup: master-us-east-2a
+      name: a
+    memoryRequest: 100Mi
+    name: events
+  iam:
+    allowContainerRegistry: true
+    legacy: false
+  kubelet:
+    anonymousAuth: false
+  kubernetesApiAccess:
+  - 0.0.0.0/0
+  kubernetesVersion: 1.17.3
+  masterPublicName: api.hryan.soheil.belamaric.com
+  networkCIDR: 172.17.16.0/21
+  networkID: vpc-0a75b33895655b46a
+  networking:
+    kubenet: {}
+  nonMasqueradeCIDR: 100.64.0.0/10
+  sshAccess:
+  - 0.0.0.0/0
+  subnets:
+  - cidr: 172.17.17.0/24
+    name: us-east-2a
+    type: Public
+    zone: us-east-2a
+  - cidr: 172.17.18.0/24
+    name: us-east-2b
+    type: Public
+    zone: us-east-2b
+  topology:
+    dns:
+      type: Public
+    masters: public
+    nodes: public

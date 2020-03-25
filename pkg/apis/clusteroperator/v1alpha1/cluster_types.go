@@ -20,7 +20,7 @@ type KopsConfig struct {
 // KopsFailure informs regarding reason cluster is not ready
 // +k8s:openapi-gen=true
 type KopsFailure struct {
-	Type    string `json:"type,omitempty"`
+	Kind    string `json:"type,omitempty"`
 	Name    string `json:"name,omitempty"`
 	Message string `json:"message,omitempty"`
 }

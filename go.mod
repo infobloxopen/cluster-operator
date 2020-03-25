@@ -105,7 +105,7 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/fullsailor/pkcs7 v0.0.0-20180422025557-ae226422660e // indirect
-	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32 // indirect
+	github.com/ghodss/yaml v1.0.1-0.20190212211648-25d852aebe32
 	github.com/go-bindata/go-bindata v3.1.2+incompatible // indirect
 	github.com/go-ini/ini v1.51.0 // indirect
 	github.com/go-logr/logr v0.1.0 // indirect
@@ -139,7 +139,7 @@ require (
 	gopkg.in/gcfg.v1 v1.2.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	honnef.co/go/tools v0.0.1-2019.2.3 // indirect
-	k8s.io/cli-runtime v0.0.0 // indirect
+	k8s.io/cli-runtime v0.0.0
 	k8s.io/component-base v0.0.0 // indirect
 	k8s.io/helm v2.16.1+incompatible // indirect
 	k8s.io/legacy-cloud-providers v0.0.0 // indirect

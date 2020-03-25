@@ -26,7 +26,7 @@ operator-chart:
 
 deploy: .id deploy/cluster.yaml generate operator-chart operator-chart operator-todo
 
-deploy-local: .id deploy/cluster.yaml generate operator-crds operator-todo
+deploy-local: .id deploy/cluster.yaml operator-crds operator-todo
 
 operator-crds:
 	kubectl apply -f deploy/cluster-operator/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
