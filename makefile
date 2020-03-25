@@ -53,6 +53,14 @@ delete:
 generate:
 	operator-sdk generate k8s # codegen
 
+.PHONY: vendor
+vendor:
+	go mod tidy
+	go mod vendor
+
+test-vendor: vendor
+	[ -z "`git status --porcelain`" ] || { echo "file changes after updating vendoring, check that vendored packages were committed"; exit 1; }
+
 test:
 	go build ./...
 	git diff --exit-code
