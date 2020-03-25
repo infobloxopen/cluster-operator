@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
-	
+
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	"github.com/infobloxopen/cluster-operator/utils"
 	"gopkg.in/yaml.v2"
@@ -88,28 +87,63 @@ func NewKops() (*KopsCmd, error) {
 //	return utils.New(ctx, nil, kopsCmd, kopsArgs...), nil
 //}
 
-func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
+// No longer needed when using Kops Manifests
+// The flow when using Kops Manifests is always kops replace -> kops update
+// The flow applies for both new and existing clusters
+//func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
+//
+//	pwd, err := os.Getwd()
+//	if err != nil {
+//		return err
+//	}
+//	kopsCmdStr := "/usr/local/bin/" +
+//		"docker run" +
+//		" -v " + pwd + "/ssh:/ssh " +
+//		utils.GetDockerEnvFlags(k.envs) +
+//		" soheileizadi/kops:v1.0" +
+//		" --state=" + cluster.StateStore +
+//		" create cluster" +
+//		" --name=" + cluster.Name +
+//		// FIXME - Should have ssh-key-name
+//		" --ssh-public-key=" + "/ssh/" + k.publicKey +
+//		" --vpc=" + cluster.Vpc +
+//		" --master-count=" + strconv.Itoa(cluster.MasterCount) +
+//		" --master-size=" + cluster.MasterEc2 +
+//		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
+//		" --node-size=" + cluster.WorkerEc2 +
+//		" --zones=" + strings.Join(cluster.Zones, ",")
+//	err = utils.RunStreamingCmd(kopsCmdStr)
+//	if err != nil {
+//		return err
+//	}
+
+//	return nil
+//}
+
+func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) error {
 
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
 	}
+
+	tempConfigFile := cluster.Name + ".yaml"
+	err = utils.CopyBufferContentsToTempFile([]byte(cluster.Config), tempConfigFile)
+	if err != nil {
+		return err
+	}
+
 	kopsCmdStr := "/usr/local/bin/" +
 		"docker run" +
 		" -v " + pwd + "/ssh:/ssh " +
+		" -v " + pwd + "/tmp/" + tempConfigFile + ":/tmp/" + tempConfigFile +
 		utils.GetDockerEnvFlags(k.envs) +
 		" soheileizadi/kops:v1.0" +
-		" --state=" + cluster.StateStore +
-		" create cluster" +
-		" --name=" + cluster.Name +
-		// FIXME - Should have ssh-key-name
-		" --ssh-public-key=" + "/ssh/" + k.publicKey +
-		" --vpc=" + cluster.Vpc +
-		" --master-count=" + strconv.Itoa(cluster.MasterCount) +
-		" --master-size=" + cluster.MasterEc2 +
-		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
-		" --node-size=" + cluster.WorkerEc2 +
-		" --zones=" + strings.Join(cluster.Zones, ",")
+		" replace cluster" +
+		" -f /tmp/" + tempConfigFile +
+		" --state=" + cluster.KopsConfig.StateStore +
+		" --force"
+
 	err = utils.RunStreamingCmd(kopsCmdStr)
 	if err != nil {
 		return err
@@ -119,7 +153,6 @@ func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 }
 
 func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
-
 	if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
 		return nil
 	}
@@ -133,8 +166,8 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
-		// " --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
-		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
+		" --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
+		" IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
 	err := utils.RunStreamingCmd(kopsCmd)
@@ -233,7 +266,7 @@ func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (c
 			Nodes: []clusteroperatorv1alpha1.KopsNode{
 				{
 					Name:     "ip-172-17-17-143.compute.internal",
-					Zone:     cluster.Zones[0],
+					Zone:     "us-east-2a",
 					Role:     "Master",
 					Hostname: "ip-172-17-17-143.compute.internal",
 					Status:   "True",

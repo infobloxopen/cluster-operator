@@ -32,10 +32,14 @@ spec:
         metadata:
           type: object
         spec:
-          description: ClusterSpec defines the desired state of Cluster
-          type: object
+          description: ClusterSpec defines the desired state of Cluster 
+          properties:
+            name:
+              type: string
+            config: 
+              type: string
         status:
-          description: ClusterStatus defines the observed state of Cluster
+          description: ClusterStatus defines the observed state of Cluster 
           type: object
       type: object
   version: v1alpha1

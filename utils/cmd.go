@@ -8,13 +8,40 @@ import (
 	"os"
 	"os/exec"
 	"sync"
-	
+
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
 func CopyBufferContentsToFile(srcBuff []byte, destFile string) (err error) {
 	out, err := os.Create(destFile)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = out.Write(srcBuff); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
+}
+
+// Copies source buffer to the tmp directory
+// Insures tmp directory exists and prepends path
+// Temporary, used for writing Kops Manifest to file but exploring using STDIN instead
+func CopyBufferContentsToTempFile(srcBuff []byte, destFile string) (err error) {
+	var mode os.FileMode = 509
+	err = os.MkdirAll("./tmp", mode)
+	if err != nil {
+		return err
+	}
+
+	out, err := os.Create("./tmp/" + destFile)
 	if err != nil {
 		return
 	}
@@ -68,35 +95,35 @@ func RunCmd(cmdString string) (*bytes.Buffer, error) {
 
 func RunStreamingCmd(cmdString string) error {
 	var out bytes.Buffer
-	
+
 	cmd := exec.Command("echo", cmdString)
 	cmd.Stdout = &out
 	err := cmd.Run()
 	if err != nil {
 		return err
 	}
-	
+
 	var mode os.FileMode = 509
 	err = os.MkdirAll("./tmp", mode)
 	if err != nil {
 		return err
 	}
-	
+
 	err = CopyBufferContentsToFile(out.Bytes(), "./tmp/cmd.sh")
 	if err != nil {
 		return err
 	}
-	
+
 	out.Reset()
 	command := New(context.TODO(), nil, "/bin/bash", "./tmp/cmd.sh")
-	
+
 	if err := command.Start(); err != nil {
 		return err
 	}
 	if err := command.Wait(); err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 

@@ -17,7 +17,7 @@ OPERATOR_SDK_VERSION := v0.15.2
 operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
-	sed "s/{{ .Name }}/`cat .id`/g" deploy/cluster.yaml.in > $@
+	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
 
 operator-chart:
 	helm upgrade -i `cat .id`-cluster-operator --namespace `cat .id` \
