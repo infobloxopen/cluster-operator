@@ -127,8 +127,8 @@ func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) er
 		return err
 	}
 
-	tempConfigFile := "tmp/" + cluster.Name + ".yaml"
-	err = utils.CopyBufferContentsToFile([]byte(cluster.Config), tempConfigFile)
+	tempConfigFile := cluster.Name + ".yaml"
+	err = utils.CopyBufferContentsToTempFile([]byte(cluster.Config), tempConfigFile)
 	if err != nil {
 		return err
 	}
@@ -136,11 +136,11 @@ func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) er
 	kopsCmdStr := "/usr/local/bin/" +
 		"docker run" +
 		" -v " + pwd + "/ssh:/ssh " +
-		" -v " + pwd + "/" + tempConfigFile + ":/" + tempConfigFile +
+		" -v " + pwd + "/tmp/" + tempConfigFile + ":/tmp/" + tempConfigFile +
 		utils.GetDockerEnvFlags(k.envs) +
 		" soheileizadi/kops:v1.0" +
 		" replace cluster" +
-		" -f " + tempConfigFile +
+		" -f /tmp/" + tempConfigFile +
 		" --state=" + cluster.KopsConfig.StateStore +
 		" --force"
 
