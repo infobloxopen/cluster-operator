@@ -59,38 +59,6 @@ var (
 	deleteClusterShort = i18n.T("Delete a cluster.")
 )
 
-// func NewCmdDeleteCluster(f *util.Factory, out io.Writer) *cobra.Command {
-// 	options := &DeleteClusterOptions{}
-
-// 	cmd := &cobra.Command{
-// 		Use:     "cluster CLUSTERNAME [--yes]",
-// 		Short:   deleteClusterShort,
-// 		Long:    deleteClusterLong,
-// 		Example: deleteClusterExample,
-// 		Run: func(cmd *cobra.Command, args []string) {
-// 			err := rootCommand.ProcessArgs(args)
-// 			if err != nil {
-// 				exitWithError(err)
-// 			}
-
-// 			// Note _not_ ClusterName(); we only want the --name flag
-// 			options.ClusterName = rootCommand.clusterName
-
-// 			err = RunDeleteCluster(f, out, options)
-// 			if err != nil {
-// 				exitWithError(err)
-// 			}
-// 		},
-// 	}
-
-// 	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", options.Yes, "Specify --yes to delete the cluster")
-// 	cmd.Flags().BoolVar(&options.Unregister, "unregister", options.Unregister, "Don't delete cloud resources, just unregister the cluster")
-// 	cmd.Flags().BoolVar(&options.External, "external", options.External, "Delete an external cluster")
-
-// 	cmd.Flags().StringVar(&options.Region, "region", options.Region, "region")
-// 	return cmd
-// }
-
 func RunDeleteCluster(f *util.Factory, out io.Writer, options *DeleteClusterOptions) error {
 	clusterName := options.ClusterName
 	if clusterName == "" {

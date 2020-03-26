@@ -158,60 +158,6 @@ func (o *RollingUpdateOptions) InitDefaults() {
 	o.ValidationTimeout = 15 * time.Minute
 }
 
-// func NewCmdRollingUpdateCluster(f *util.Factory, out io.Writer) *cobra.Command {
-
-// 	var options RollingUpdateOptions
-// 	options.InitDefaults()
-
-// 	cmd := &cobra.Command{
-// 		Use:     "cluster",
-// 		Short:   rollingupdateShort,
-// 		Long:    rollingupdateLong,
-// 		Example: rollingupdateExample,
-// 	}
-
-// 	cmd.Flags().BoolVarP(&options.Yes, "yes", "y", options.Yes, "Perform rolling update immediately, without --yes rolling-update executes a dry-run")
-// 	cmd.Flags().BoolVar(&options.Force, "force", options.Force, "Force rolling update, even if no changes")
-// 	cmd.Flags().BoolVar(&options.CloudOnly, "cloudonly", options.CloudOnly, "Perform rolling update without confirming progress with k8s")
-
-// 	cmd.Flags().DurationVar(&options.ValidationTimeout, "validation-timeout", options.ValidationTimeout, "Maximum time to wait for a cluster to validate")
-// 	cmd.Flags().DurationVar(&options.MasterInterval, "master-interval", options.MasterInterval, "Time to wait between restarting masters")
-// 	cmd.Flags().DurationVar(&options.NodeInterval, "node-interval", options.NodeInterval, "Time to wait between restarting nodes")
-// 	cmd.Flags().DurationVar(&options.BastionInterval, "bastion-interval", options.BastionInterval, "Time to wait between restarting bastions")
-// 	cmd.Flags().DurationVar(&options.PostDrainDelay, "post-drain-delay", options.PostDrainDelay, "Time to wait after draining each node")
-// 	cmd.Flags().BoolVarP(&options.Interactive, "interactive", "i", options.Interactive, "Prompt to continue after each instance is updated")
-// 	cmd.Flags().StringSliceVar(&options.InstanceGroups, "instance-group", options.InstanceGroups, "List of instance groups to update (defaults to all if not specified)")
-// 	cmd.Flags().StringSliceVar(&options.InstanceGroupRoles, "instance-group-roles", options.InstanceGroupRoles, "If specified, only instance groups of the specified role will be updated (e.g. Master,Node,Bastion)")
-
-// 	cmd.Flags().BoolVar(&options.FailOnDrainError, "fail-on-drain-error", true, "The rolling-update will fail if draining a node fails.")
-// 	cmd.Flags().BoolVar(&options.FailOnValidate, "fail-on-validate-error", true, "The rolling-update will fail if the cluster fails to validate.")
-
-// 	cmd.Run = func(cmd *cobra.Command, args []string) {
-// 		err := rootCommand.ProcessArgs(args)
-// 		if err != nil {
-// 			exitWithError(err)
-// 			return
-// 		}
-
-// 		clusterName := rootCommand.ClusterName()
-// 		if clusterName == "" {
-// 			exitWithError(fmt.Errorf("--name is required"))
-// 			return
-// 		}
-
-// 		options.ClusterName = clusterName
-
-// 		err = RunRollingUpdateCluster(f, os.Stdout, &options)
-// 		if err != nil {
-// 			exitWithError(err)
-// 			return
-// 		}
-
-// 	}
-
-// 	return cmd
-// }
-
 func RunRollingUpdateCluster(f *util.Factory, out io.Writer, options *RollingUpdateOptions) error {
 
 	clientset, err := f.Clientset()

@@ -208,8 +208,8 @@ func (c *RootCmd) ProcessArgs(args []string) error {
 		// Assume <clustername>
 		if c.clusterName == "" {
 			c.clusterName = args[0]
-			return nil
 		}
+		return nil
 	}
 
 	fmt.Printf("\nFound multiple arguments which look like a cluster name\n")

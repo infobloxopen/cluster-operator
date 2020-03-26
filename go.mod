@@ -147,4 +147,4 @@ require (
 	sigs.k8s.io/yaml v1.1.0 // indirect
 )
 
-require github.com/Azure/go-autorest v12.2.0+incompatible
+require github.com/Azure/go-autorest v12.2.0+incompatible // indirect

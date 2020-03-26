@@ -41,41 +41,12 @@ import (
 type ValidateClusterOptions struct {
 	output     string
 	wait       time.Duration
-	kubeconfig string
+	Kubeconfig string
 }
 
 func (o *ValidateClusterOptions) InitDefaults() {
 	o.output = OutputTable
 }
-
-// func NewCmdValidateCluster(f *util.Factory, out io.Writer) *cobra.Command {
-// 	options := &ValidateClusterOptions{}
-// 	options.InitDefaults()
-
-// 	cmd := &cobra.Command{
-// 		Use:     "cluster",
-// 		Short:   validateShort,
-// 		Long:    validateLong,
-// 		Example: validateExample,
-// 		Run: func(cmd *cobra.Command, args []string) {
-// 			result, err := RunValidateCluster(f, cmd, args, os.Stdout, options)
-// 			if err != nil {
-// 				exitWithError(err)
-// 			}
-// 			// We want the validate command to exit non-zero if validation found a problem,
-// 			// even if we didn't really hit an error during validation.
-// 			if len(result.Failures) != 0 {
-// 				os.Exit(2)
-// 			}
-// 		},
-// 	}
-
-// 	cmd.Flags().StringVarP(&options.output, "output", "o", options.output, "Output format. One of json|yaml|table.")
-// 	cmd.Flags().DurationVar(&options.wait, "wait", options.wait, "If set, will wait for cluster to be ready")
-// 	cmd.Flags().StringVar(&options.kubeconfig, "kubeconfig", "", "Path to the kubeconfig file")
-
-// 	return cmd
-// }
 
 func RunValidateCluster(f *util.Factory, args []string, out io.Writer, options *ValidateClusterOptions) (*clusteroperatorv1alpha1.KopsStatus, error) {
 	err := rootCommand.ProcessArgs(args)
@@ -120,8 +91,8 @@ func RunValidateCluster(f *util.Factory, args []string, out io.Writer, options *
 	// TODO: Refactor into util.Factory
 	contextName := cluster.ObjectMeta.Name
 	configLoadingRules := clientcmd.NewDefaultClientConfigLoadingRules()
-	if options.kubeconfig != "" {
-		configLoadingRules.ExplicitPath = options.kubeconfig
+	if options.Kubeconfig != "" {
+		configLoadingRules.ExplicitPath = options.Kubeconfig
 	}
 	config, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		configLoadingRules,

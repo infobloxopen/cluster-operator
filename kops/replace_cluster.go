@@ -57,7 +57,7 @@ type ReplaceOptions struct {
 	// Filenames is a list of files containing resources
 	Filenames []string
 	// create any resources not found - we limit to instance groups only for now
-	force bool
+	Force bool
 }
 
 // RunReplace processes the replace command
@@ -112,7 +112,7 @@ func RunReplace(f *util.Factory, out io.Writer, c *ReplaceOptions) error {
 						}
 					}
 					if cluster == nil {
-						if !c.force {
+						if !c.Force {
 							return fmt.Errorf("cluster %v does not exist (try adding --force flag)", clusterName)
 						}
 						_, err = clientset.CreateCluster(v)
@@ -144,7 +144,7 @@ func RunReplace(f *util.Factory, out io.Writer, c *ReplaceOptions) error {
 				ig, err := clientset.InstanceGroupsFor(cluster).Get(igName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
-						if !c.force {
+						if !c.Force {
 							return fmt.Errorf("instanceGroup: %v does not exist (try adding --force flag)", igName)
 						}
 					} else {

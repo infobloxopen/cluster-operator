@@ -17,7 +17,7 @@ OPERATOR_SDK_VERSION := v0.15.2
 operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
-	sed "s/{{ .Name }}/`cat .id`/g" deploy/cluster.yaml.in > $@
+	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
 
 operator-chart:
 	helm upgrade -i `cat .id`-cluster-operator --namespace `cat .id` \
@@ -52,6 +52,14 @@ delete:
 
 generate:
 	operator-sdk generate k8s # codegen
+
+.PHONY: vendor
+vendor:
+	go mod tidy
+	go mod vendor
+
+test-vendor: vendor
+	[ -z "`git status --porcelain`" ] || { echo "file changes after updating vendoring, check that vendored packages were committed"; exit 1; }
 
 test:
 	go build ./...

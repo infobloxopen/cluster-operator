@@ -53,30 +53,8 @@ type ExportKubecfgOptions struct {
 	all            bool
 }
 
-// func NewCmdExportKubecfg(f *util.Factory, out io.Writer) *cobra.Command {
-// 	options := &ExportKubecfgOptions{}
-
-// 	cmd := &cobra.Command{
-// 		Use:     "kubecfg CLUSTERNAME",
-// 		Short:   exportKubecfgShort,
-// 		Long:    exportKubecfgLong,
-// 		Example: exportKubecfgExample,
-// 		Run: func(cmd *cobra.Command, args []string) {
-// 			err := RunExportKubecfg(f, out, options, args)
-// 			if err != nil {
-// 				exitWithError(err)
-// 			}
-// 		},
-// 	}
-
-// 	cmd.Flags().StringVar(&options.KubeConfigPath, "kubeconfig", options.KubeConfigPath, "The location of the kubeconfig file to create.")
-// 	cmd.Flags().BoolVar(&options.all, "all", options.all, "export all clusters from the kops state store")
-
-// 	return cmd
-// }
-
 func RunExportKubecfg(f *util.Factory, out io.Writer, options *ExportKubecfgOptions, args []string) (*clusteroperatorv1alpha1.KubeConfig, error) {
-	clientset, err := rootCommand.Clientset()
+	clientset, err := f.Clientset()
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +76,7 @@ func RunExportKubecfg(f *util.Factory, out io.Writer, options *ExportKubecfgOpti
 		if err != nil {
 			return nil, err
 		}
-		cluster, err := rootCommand.Cluster()
+		cluster, err := GetCluster(f, args[0])
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +104,7 @@ func RunExportKubecfg(f *util.Factory, out io.Writer, options *ExportKubecfgOpti
 		}
 	}
 
-	file, err := ioutil.ReadFile("tmp/config.yaml")
+	file, err := ioutil.ReadFile("tmp/config-" + args[0])
 	if err != nil {
 		return nil, err
 	}
