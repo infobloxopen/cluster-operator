@@ -1,8 +1,8 @@
 .env
 .id
 deploy/cluster.yaml
+config
 .bin/
-
 
 .idea
 tmp
