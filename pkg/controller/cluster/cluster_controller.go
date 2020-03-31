@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
@@ -97,7 +96,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-	fmt.Print(instance.Status.Phase)
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
 
@@ -242,15 +240,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	// Stop reconciliation as the item is being deleted
 	return reconcile.Result{}, nil
 }
-
-// func (instance *clusteroperatorv1alpha1.Cluster) CheckClusterExists(k *kops.KopsCmd, r *ReconcileCluster) error {
-// 	err := k.GetCluster(instance.Spec.KopsConfig)
-// 	if err != nil {
-// 		instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
-// 		return instance, err
-// 	}
-// 	return
-// }
 
 // Get Kops Default Config Resource
 func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperatorv1alpha1.KopsConfig {
