@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
@@ -81,6 +82,7 @@ type ReconcileCluster struct {
 func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Cluster")
+
 	// Fetch the Cluster instance
 	instance := &clusteroperatorv1alpha1.Cluster{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -95,7 +97,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
+	fmt.Print(instance.Status.Phase)
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
 
@@ -108,6 +110,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
@@ -125,6 +128,19 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 
+		//check if cluster still exists, if no set to PENDING and remake
+		if instance.Status.Phase != clusteroperatorv1alpha1.ClusterPending && instance.Status.Phase != "" {
+			err := k.GetCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				reqLogger.Info("Cluster does not exist... resetting to PENDING")
+				instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+				if err := r.client.Status().Update(context.TODO(), instance); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			}
+		}
+
 		// Run State Machine
 		// PENDING -> SETUP -> DONE
 		switch instance.Status.Phase {
@@ -132,7 +148,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// Both updates and new clusters start with Kops replace
 			// Adds the manifest to the kops state store without applying changes
 			reqLogger.Info("Phase: PENDING")
-			err := k.ReplaceCluster(instance.Spec)
+			err = k.ReplaceCluster(instance.Spec)
 			if err != nil {
 				reqLogger.Error(err, "error creating kops command")
 				return reconcile.Result{}, err
@@ -201,15 +217,20 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, nil
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
-		// our finalizer is present, so delete cluster first
-		err := k.DeleteCluster(instance.Spec.KopsConfig)
+
+		//check if cluster still exists
+		err := k.GetCluster(instance.Spec.KopsConfig)
 		if err != nil {
-			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
-			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
-			//return reconcile.Result{}, err
+			reqLogger.Info("Cluster is already deleted...")
+		} else {
+			err = k.DeleteCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				//error deleting cluster
+				return reconcile.Result{}, err
+			}
 		}
 
-		reqLogger.Info("Cluster Deleted")
+		// our finalizer is present, so delete cluster first
 		// remove our finalizer from the list and update it.
 		instance.ObjectMeta.Finalizers = utils.Remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
 
@@ -222,6 +243,15 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	return reconcile.Result{}, nil
 }
 
+// func (instance *clusteroperatorv1alpha1.Cluster) CheckClusterExists(k *kops.KopsCmd, r *ReconcileCluster) error {
+// 	err := k.GetCluster(instance.Spec.KopsConfig)
+// 	if err != nil {
+// 		instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+// 		return instance, err
+// 	}
+// 	return
+// }
+
 // Get Kops Default Config Resource
 func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperatorv1alpha1.KopsConfig {
 	// If KopsConfig is not defined in CR, use default
@@ -229,44 +259,44 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 	// we want to use a few inputs to pull information from the CMDB or
 	// another controller that would hold the config information based on
 	// the supplied infra info
-	
+
 	// Due to changes to use Kops manifests, the only required fields are Name and StateStore
 	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
 		// FIXME - Pickup DNS zone from Operator Config
-		Name:        c.Name + ".soheil.belamaric.com",
+		Name: c.Name + ".soheil.belamaric.com",
 		// MasterCount: 1,
 		// MasterEc2:   "t2.micro",
 		// WorkerCount: 2,
 		// WorkerEc2:   "t2.micro",
 		// FIXME - Pickup state store from Operator Config
-		StateStore:  "s3://kops.state.seizadi.infoblox.com",
+		StateStore: "s3://kops.state.seizadi.infoblox.com",
 		// Vpc:         "vpc-0a75b33895655b46a",
 		// Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
-	
-	if (c.KopsConfig.MasterCount > 0) {
+
+	if c.KopsConfig.MasterCount > 0 {
 		defaultConfig.MasterCount = c.KopsConfig.MasterCount
 	}
-	
-	if len (c.KopsConfig.MasterEc2)  != 0 {
+
+	if len(c.KopsConfig.MasterEc2) != 0 {
 		defaultConfig.MasterEc2 = c.KopsConfig.MasterEc2
 	}
-	
+
 	if (c.KopsConfig.WorkerCount) > 0 {
 		defaultConfig.WorkerCount = c.KopsConfig.WorkerCount
 	}
-	
-	if len (c.KopsConfig.WorkerEc2) > 0 {
+
+	if len(c.KopsConfig.WorkerEc2) > 0 {
 		defaultConfig.WorkerEc2 = c.KopsConfig.WorkerEc2
 	}
-	
-	if len (c.KopsConfig.Vpc) > 0 {
+
+	if len(c.KopsConfig.Vpc) > 0 {
 		defaultConfig.Vpc = c.KopsConfig.Vpc
 	}
-	
+
 	if len(c.KopsConfig.Zones) > 0 {
 		c.KopsConfig.Zones = c.KopsConfig.Zones
 	}
-	
+
 	return defaultConfig
 }
