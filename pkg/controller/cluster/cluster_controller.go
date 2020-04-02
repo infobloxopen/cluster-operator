@@ -212,7 +212,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 			reqLogger.Info("Cluster Updated")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
-			instance.Status.KubeConfig = *config
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
 
