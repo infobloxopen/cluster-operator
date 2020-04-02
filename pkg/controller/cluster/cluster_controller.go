@@ -189,9 +189,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				return reconcile.Result{}, err
 			}
 
-			instance.Status.KubeConfig = *config
-			reqLogger.Info("KUBECONFIG Updated")
-
 			//rolling udpates
 			os.Setenv("KUBECONFIG", "tmp/config-"+kc.Name)
 
@@ -212,6 +209,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 			reqLogger.Info("Cluster Updated")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
+			instance.Status.KubeConfig = *config
+			reqLogger.Info("KUBECONFIG Updated")
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
 
