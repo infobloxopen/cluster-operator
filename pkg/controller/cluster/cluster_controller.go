@@ -216,6 +216,9 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		case clusteroperatorv1alpha1.ClusterSetup:
 			reqLogger.Info("Phase: SETUP")
 
+			// Setenv required if not using default .kube/config,
+			// the --kubeconfig option does not currently work for kops validate (1.18.2-alpha2)
+			os.Setenv("KUBECONFIG", "tmp/config-"+kc.Name)
 			validateOptions := &kops.ValidateClusterOptions{Kubeconfig: "tmp/config-" + kc.Name}
 			validateOptions.InitDefaults()
 			clusterName := []string{kc.Name}
