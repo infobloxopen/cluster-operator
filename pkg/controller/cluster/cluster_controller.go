@@ -55,25 +55,6 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 	pred := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// var oldInstance clusteroperatorv1alpha1.Cluster
-			// obj, _ := json.Marshal(e.ObjectOld)
-			// err := json.Unmarshal(obj, &oldInstance)
-			// if err != nil {
-			// 	fmt.Print("error")
-			// }
-
-			// var newInstance clusteroperatorv1alpha1.Cluster
-			// obj, _ = json.Marshal(e.ObjectOld)
-			// err = json.Unmarshal(obj, &newInstance)
-			// if err != nil {
-			// 	fmt.Print("error")
-			// }
-			// // clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
-			// if newInstance.Status.Phase != oldInstance.Status.Phase {
-			// 	// (utils.Contains(e.MetaNew.GetFinalizers(), clusterFinalizer)  {
-			// 	fmt.Print("me here\n")
-			// 	return false
-			// }
 
 			if e.MetaNew.GetGeneration() == e.MetaOld.GetGeneration() {
 				return false
