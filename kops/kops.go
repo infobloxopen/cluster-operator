@@ -177,7 +177,7 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 	return nil
 }
 
-func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
+func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, error) {
 	kopsCmd := "/usr/local/bin/" +
 		"docker run" +
 		utils.GetDockerEnvFlags(k.envs) +
@@ -185,12 +185,15 @@ func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 		" get cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name
-
+	exists := true
 	err := utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
-		return err
+		if strings.Contains(err.Error(), "exit status 1") {
+			exists = false
+		}
+		return exists, err
 	}
-	return nil
+	return exists, nil
 }
 
 func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {

@@ -137,14 +137,17 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 		//check if cluster still exists, if no set to PENDING and remake
 		if instance.Status.Phase != clusteroperatorv1alpha1.ClusterPending && instance.Status.Phase != "" {
-			err := k.GetCluster(instance.Spec.KopsConfig)
-			if err != nil {
-				reqLogger.Info("Cluster does not exist... resetting to PENDING")
+			exists, err := k.GetCluster(instance.Spec.KopsConfig)
+			if !exists {
+				reqLogger.WithValues("error", err).Info("Cluster does not exist... resetting to PENDING")
 				instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 				if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 					return reconcile.Result{}, err
 				}
 				return reconcile.Result{}, nil
+			} else if err != nil {
+				reqLogger.WithValues("error", err).Info("Error fetching cluster status")
+				return reconcile.Result{}, err
 			}
 		}
 
@@ -226,9 +229,12 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 
 		//check if cluster still exists
-		err := k.GetCluster(instance.Spec.KopsConfig)
-		if err != nil {
-			reqLogger.Info("Cluster is already deleted...")
+		exists, err := k.GetCluster(instance.Spec.KopsConfig)
+		if !exists {
+			reqLogger.WithValues("error", err).Info("Cluster is already deleted...")
+		} else if err != nil {
+			reqLogger.WithValues("error", err).Info("Error getting cluster")
+			return reconcile.Result{}, err
 		} else {
 			err = k.DeleteCluster(instance.Spec.KopsConfig)
 			if err != nil {
