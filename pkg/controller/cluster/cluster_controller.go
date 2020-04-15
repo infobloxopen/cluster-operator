@@ -106,28 +106,45 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	SSClusters, err := k.ListCluster(instance.Spec.KopsConfig)
-	EctdClusters := &clusteroperatorv1alpha1.ClusterList{}
-	err = r.client.List(context.Background(), EctdClusters)
-	if err != nil {
-		reqLogger.Error(err, "Error getting list of clusters")
-		return reconcile.Result{}, err
-	}
-
-	for _, cluster := range SSClusters {
-		if cluster == s {
-			continue
-		}
-		result = append(result, item)
-	}
-
 	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
+			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
+			SSClusters, err := k.ListCluster(instance.Spec.KopsConfig)
+			EctdClusters := &clusteroperatorv1alpha1.ClusterList{}
+			err = r.client.List(context.Background(), EctdClusters)
+			if err != nil {
+				reqLogger.Error(err, "Error getting list of clusters")
+				return reconcile.Result{}, err
+			}
+
+			var badClusters []string
+			for _, s := range SSClusters {
+				found := false
+				for _, e := range EtcdClusters.Items {
+					if s == e.Spec.ClusterName {
+						found = true
+					}
+				}
+				if !found {
+					append(badClusters, s)
+				}
+			}
+
+			if len(badClusters) != nil {
+				reqLogger.Info("Clusters found in state store (" + instance.Spec.KopsConfig.StateStore ") that are not in etcd")
+				for _, cluster := range badClusters {
+					err := k.DeleteCluster(instance.Spec.KopsConfig)
+					if err != nil {
+						reqLogger.Error(err, "Cannot delete cluster from stat store")
+						return reconcile.Result{}, err
+					}
+				}
+				
+			}
 			//check state store here
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
-			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
 			if err := r.client.Update(context.TODO(), instance); err != nil {
 				return reconcile.Result{}, err
 			}
