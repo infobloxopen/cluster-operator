@@ -5,6 +5,7 @@ metadata:
   namespace: {{ .Name }}
 spec:
   name: {{ .Name }}
+  cluster_name: {{ .Name }}.soheil.belamaric.com
   config: |
     apiVersion: kops.k8s.io/v1alpha2
     kind: Cluster
@@ -41,7 +42,7 @@ spec:
       kubernetesVersion: 1.16.7
       masterPublicName: api.{{ .Name }}.soheil.belamaric.com
       networkCIDR: 172.17.16.0/21
-      networkID: vpc-0a75b33895655b46a
+      networkID: vpc-08897028adadc9b1f
       networking:
         kubenet: {}
       nonMasqueradeCIDR: 100.64.0.0/10

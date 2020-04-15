@@ -106,10 +106,26 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
+	SSClusters, err := k.ListCluster(instance.Spec.KopsConfig)
+	EctdClusters := &clusteroperatorv1alpha1.ClusterList{}
+	err = r.client.List(context.Background(), EctdClusters)
+	if err != nil {
+		reqLogger.Error(err, "Error getting list of clusters")
+		return reconcile.Result{}, err
+	}
+
+	for _, cluster := range SSClusters {
+		if cluster == s {
+			continue
+		}
+		result = append(result, item)
+	}
+
 	//If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
+			//check state store here
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
 			if err := r.client.Update(context.TODO(), instance); err != nil {
@@ -229,44 +245,50 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 	// we want to use a few inputs to pull information from the CMDB or
 	// another controller that would hold the config information based on
 	// the supplied infra info
-	
+
 	// Due to changes to use Kops manifests, the only required fields are Name and StateStore
 	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
 		// FIXME - Pickup DNS zone from Operator Config
-		Name:        c.Name + ".soheil.belamaric.com",
+		Name: c.Name + ".soheil.belamaric.com",
 		// MasterCount: 1,
 		// MasterEc2:   "t2.micro",
 		// WorkerCount: 2,
 		// WorkerEc2:   "t2.micro",
 		// FIXME - Pickup state store from Operator Config
-		StateStore:  "s3://kops.state.seizadi.infoblox.com",
+		StateStore: "s3://kops.state.seizadi.infoblox.com",
 		// Vpc:         "vpc-0a75b33895655b46a",
 		// Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
-	
-	if (c.KopsConfig.MasterCount > 0) {
+
+	if c.KopsConfig.MasterCount > 0 {
 		defaultConfig.MasterCount = c.KopsConfig.MasterCount
 	}
-	
-	if len (c.KopsConfig.MasterEc2)  != 0 {
+
+	if len(c.KopsConfig.MasterEc2) != 0 {
 		defaultConfig.MasterEc2 = c.KopsConfig.MasterEc2
 	}
-	
+
 	if (c.KopsConfig.WorkerCount) > 0 {
 		defaultConfig.WorkerCount = c.KopsConfig.WorkerCount
 	}
-	
-	if len (c.KopsConfig.WorkerEc2) > 0 {
+
+	if len(c.KopsConfig.WorkerEc2) > 0 {
 		defaultConfig.WorkerEc2 = c.KopsConfig.WorkerEc2
 	}
-	
-	if len (c.KopsConfig.Vpc) > 0 {
+
+	if len(c.KopsConfig.Vpc) > 0 {
 		defaultConfig.Vpc = c.KopsConfig.Vpc
 	}
-	
+
 	if len(c.KopsConfig.Zones) > 0 {
 		c.KopsConfig.Zones = c.KopsConfig.Zones
 	}
-	
+
 	return defaultConfig
 }
+
+// func checkStateStore() {
+
+// 	//get cluster in json form
+
+// }

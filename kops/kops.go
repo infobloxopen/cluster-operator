@@ -348,3 +348,20 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 
 	return config, nil
 }
+
+func (k *KopsCmd) ListCluster(cluster clusteroperatorv1alpha1.KopsConfig) ([]string, error) {
+	kopsCmd := "/usr/local/bin/" +
+		"docker run" +
+		utils.GetDockerEnvFlags(k.envs) +
+		" soheileizadi/kops:v1.0" +
+		" get cluster " +
+		" --state=" + cluster.StateStore +
+		" -o json | jq -r '.[][\"metadata\"][\"name\"]'"
+
+	out, err := utils.RunCmd(kopsCmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return strings.Split(string(out.Bytes()), "\n"), nil
+}
