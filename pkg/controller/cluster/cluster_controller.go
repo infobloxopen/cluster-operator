@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"context"
-	"fmt"
 	"os"
 
 	"github.com/infobloxopen/cluster-operator/kops"
@@ -121,7 +120,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// The following routine will remove any clusters from the state store that are not in etcd
 			// This will run whenever a cluster is created on the state store its beeing created in
 			reaper := []string{"REAPER"}
-			fmt.Print(reaper)
 			if utils.GetEnvs(reaper)[0][1] == "true" {
 				//get all clusters in etcd (grabbing only from namespace operator is working in, see fix me)
 				etcdClusters := &clusteroperatorv1alpha1.ClusterList{}
