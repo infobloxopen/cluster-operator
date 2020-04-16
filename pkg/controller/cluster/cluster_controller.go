@@ -124,15 +124,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 					os.Exit(1)
 				}
 
-				// filter out clusters that are not in current state store
-				// worth it to filter out in case there are clusters with the same name in different state stores
-				var etcdStateClusters []clusteroperatorv1alpha1.Cluster
-				for _, e := range etcdClusters.Items {
-					if e.Spec.KopsConfig.StateStore == instance.Spec.KopsConfig.StateStore {
-						etcdStateClusters = append(etcdStateClusters, e)
-					}
-				}
-
 				// List clusters in current state store
 				ssClusters, err := k.ListClusters(instance.Spec.KopsConfig.StateStore)
 				if err != nil {
@@ -147,7 +138,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 				// may exist in etcd, just in a different namespace. Need to look into if this will break or not
 				for _, s := range ssClusters {
 					found := false
-					for _, e := range etcdStateClusters {
+					for _, e := range etcdClusters.Items {
 						if s == e.Spec.KopsConfig.Name {
 							found = true
 						}
