@@ -74,7 +74,7 @@ func main() {
 	// 	log.Error(err, "Failed to get watch namespace")
 	// 	os.Exit(1)
 	// }
-	namespace := "hryan"
+	namespace := os.Getenv("NAMESPACE")
 
 	// Get a config to talk to the apiserver
 	cfg, err := config.GetConfig()
@@ -114,7 +114,6 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-
 	// Add the Metrics Service
 	addMetrics(ctx, cfg, namespace)
 
