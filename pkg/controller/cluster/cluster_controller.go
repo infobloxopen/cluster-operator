@@ -2,6 +2,8 @@ package cluster
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
@@ -111,42 +113,70 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
-			SSClusters, err := k.ListCluster(instance.Spec.KopsConfig)
-			EctdClusters := &clusteroperatorv1alpha1.ClusterList{}
-			err = r.client.List(context.Background(), EctdClusters)
-			if err != nil {
-				reqLogger.Error(err, "Error getting list of clusters")
-				return reconcile.Result{}, err
-			}
-
-			var badClusters []string
-			for _, s := range SSClusters {
-				found := false
-				for _, e := range EtcdClusters.Items {
-					if s == e.Spec.ClusterName {
-						found = true
-					}
-				}
-				if !found {
-					append(badClusters, s)
-				}
-			}
-
-			if len(badClusters) != nil {
-				reqLogger.Info("Clusters found in state store (" + instance.Spec.KopsConfig.StateStore ") that are not in etcd")
-				for _, cluster := range badClusters {
-					err := k.DeleteCluster(instance.Spec.KopsConfig)
-					if err != nil {
-						reqLogger.Error(err, "Cannot delete cluster from stat store")
-						return reconcile.Result{}, err
-					}
-				}
-				
-			}
-			//check state store here
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 			if err := r.client.Update(context.TODO(), instance); err != nil {
 				return reconcile.Result{}, err
+			}
+
+			// The following routine will remove any clusters from the state store that are not in etcd
+			// This will run whenever a cluster is created on the state store its beeing created in
+			reaper := []string{"REAPER"}
+			fmt.Print(reaper)
+			if utils.GetEnvs(reaper)[0][1] == "true" {
+				//get all clusters in etcd (grabbing only from namespace operator is working in, see fix me)
+				etcdClusters := &clusteroperatorv1alpha1.ClusterList{}
+				err = r.client.List(context.Background(), etcdClusters)
+				if err != nil {
+					log.Error(err, "Error getting list of clusters")
+					os.Exit(1)
+				}
+
+				// filter out clusters that are not in current state store
+				// worth it to filter out in case there are clusters with the same name in different state stores
+				var etcdStateClusters []clusteroperatorv1alpha1.Cluster
+				for _, e := range etcdClusters.Items {
+					if e.Spec.KopsConfig.StateStore == instance.Spec.KopsConfig.StateStore {
+						etcdStateClusters = append(etcdStateClusters, e)
+					}
+				}
+
+				// List clusters in current state store
+				ssClusters, err := k.ListClusters(instance.Spec.KopsConfig.StateStore)
+				if err != nil {
+					reqLogger.Error(err, "Cannot list clusters")
+					return reconcile.Result{}, err
+				}
+
+				var badClusters []string
+
+				// FIXME This is banking off the fact that the operator only looks for clusters in one
+				// namespace. If that is changed, we need to take into account that the cluster we are looking for
+				// may exist in etcd, just in a different namespace. Need to look into if this will break or not
+				for _, s := range ssClusters {
+					found := false
+					for _, e := range etcdStateClusters {
+						if s == e.Spec.KopsConfig.Name {
+							found = true
+						}
+					}
+					if !found {
+						badClusters = append(badClusters, s)
+					}
+				}
+
+				if badClusters != nil {
+					reqLogger.Info("Clusters found in state store (" + instance.Spec.KopsConfig.StateStore + ") that are not in etcd")
+					for _, cluster := range badClusters {
+						reqLogger.Info("Deleting cluster " + cluster)
+						// tempKopsConfig := clusteroperatorv1alpha1.KopsConfig{StateStore: instance.Spec.KopsConfig.StateStore, Name: cluster}
+						// err := k.DeleteCluster(tempKopsConfig)
+						if err != nil {
+							reqLogger.Error(err, "Cannot delete cluster from stat store")
+							return reconcile.Result{}, err
+						}
+					}
+
+				}
 			}
 		}
 
