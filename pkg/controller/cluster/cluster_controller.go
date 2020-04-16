@@ -112,11 +112,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
-			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
-			if err := r.client.Update(context.TODO(), instance); err != nil {
-				return reconcile.Result{}, err
-			}
-
 			// The following routine will remove any clusters from the state store that are not in etcd
 			// This will run whenever a cluster is created on the state store its beeing created in
 			reaper := []string{"REAPER"}
@@ -175,6 +170,11 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 					}
 
 				}
+			}
+
+			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+			if err := r.client.Update(context.TODO(), instance); err != nil {
+				return reconcile.Result{}, err
 			}
 		}
 
