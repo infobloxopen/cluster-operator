@@ -1,0 +1,25 @@
+apiVersion: spacecontroller.infoblox-cto.github.com/v1alpha1
+kind: Space
+metadata:
+  name: aws-secrets
+  namespace: {{ .Release.Namespace }}
+spec:
+  path: {{ .Values.vault.aws.path }}
+  secretName: aws-secrets
+  secrets:
+    AWS_ACCESS_KEY_ID: VAULT
+    AWS_SECRET_ACCESS_KEY: VAULT
+  type: Opaque
+
+---
+apiVersion: spacecontroller.infoblox-cto.github.com/v1alpha1
+kind: Space
+metadata:
+  name: infobloxctokey
+  namespace: {{ .Release.Namespace }}
+spec:
+  path: {{ .Values.vault.imagepullsecret.path }}
+  secretName: infobloxctokey
+  secrets:
+    config: VAULT
+  type: k8s.io/dockerconfigjson
