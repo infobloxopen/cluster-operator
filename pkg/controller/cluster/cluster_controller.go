@@ -55,6 +55,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	pred := predicate.Funcs{
+<<<<<<< HEAD
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			// var oldInstance clusteroperatorv1alpha1.Cluster
 			// obj, _ := json.Marshal(e.ObjectOld)
@@ -81,6 +82,11 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 			}
 
 			return true
+=======
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Evaluates to false if the object has been confirmed deleted.
+			return e.DeleteStateUnknown
+>>>>>>> eeec27e756813f0ca49e08e276155d8882a3a37d
 		},
 	}
 
@@ -123,6 +129,7 @@ type ReconcileCluster struct {
 func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Cluster")
+
 	// Fetch the Cluster instance
 	instance := &clusteroperatorv1alpha1.Cluster{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -137,13 +144,13 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
 
 	kc := CheckKopsDefaultConfig(instance.Spec)
 	// If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+<<<<<<< HEAD
 		//If the CR is being requeued but is in the DONE phase, it must need updating
 		// if instance.Status.Phase == clusteroperatorv1alpha1.ClusterDone {
 		// 	instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
@@ -151,6 +158,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// 		return reconcile.Result{}, err
 		// 	}
 		// }
+=======
+>>>>>>> eeec27e756813f0ca49e08e276155d8882a3a37d
 
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
@@ -174,8 +183,25 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			return reconcile.Result{}, err
 		}
 
+		//check if cluster still exists, if no set to PENDING and remake
+		if instance.Status.Phase != clusteroperatorv1alpha1.ClusterPending && instance.Status.Phase != "" {
+			exists, err := k.GetCluster(instance.Spec.KopsConfig)
+			if !exists {
+				reqLogger.WithValues("error", err).Info("Cluster does not exist... resetting to PENDING")
+				instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+				if err := r.client.Status().Update(context.TODO(), instance); err != nil {
+					return reconcile.Result{}, err
+				}
+				return reconcile.Result{}, nil
+			} else if err != nil {
+				reqLogger.WithValues("error", err).Info("Error fetching cluster status")
+				return reconcile.Result{}, err
+			}
+		}
+
 		// Run State Machine
 		// PENDING -> SETUP -> DONE
+<<<<<<< HEAD
 		// switch instance.Status.Phase {
 		// case clusteroperatorv1alpha1.ClusterPending:
 		reqLogger.Info("Phase: PENDING")
@@ -188,6 +214,65 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		if err != nil {
 			reqLogger.Error(err, "error creating cluster")
 			return reconcile.Result{}, err
+=======
+		switch instance.Status.Phase {
+		case clusteroperatorv1alpha1.ClusterPending:
+			// Both updates and new clusters start with Kops replace
+			// Adds the manifest to the kops state store without applying changes
+			reqLogger.Info("Phase: PENDING")
+			err = k.ReplaceCluster(instance.Spec)
+			if err != nil {
+				reqLogger.Error(err, "error creating kops command")
+				return reconcile.Result{}, err
+			}
+			reqLogger.Info("Cluster Created")
+			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
+		case clusteroperatorv1alpha1.ClusterUpdate:
+			// Kops update is required for both new and updated cluster configurations
+			reqLogger.Info("Phase: UPDATE")
+			err := k.UpdateCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
+			// We call rolling-update to apply these changes
+			err = k.RollingUpdateCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			reqLogger.Info("Cluster Updated")
+			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
+		case clusteroperatorv1alpha1.ClusterSetup:
+			reqLogger.Info("Phase: SETUP")
+			status, err := k.ValidateCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			instance.Status.KopsStatus = clusteroperatorv1alpha1.KopsStatus{}
+			if len(status.Failures) > 0 {
+				instance.Status.KopsStatus.Failures = status.Failures
+				reqLogger.Info("Cluster Not Ready")
+			} else if len(status.Nodes) > 0 {
+				instance.Status.KopsStatus.Nodes = status.Nodes
+				reqLogger.Info("Cluster Created")
+				instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
+				config, err := k.GetKubeConfig(instance.Spec.KopsConfig)
+				if err != nil {
+					return reconcile.Result{}, err
+				}
+				instance.Status.KubeConfig = config
+				reqLogger.Info("KUBECONFIG Updated")
+			} else {
+				// FIXME - If we get this state try validate again!!!
+				reqLogger.Info("Validate Returned Unexpected Result")
+			}
+		case clusteroperatorv1alpha1.ClusterDone:
+			reqLogger.Info("Phase: DONE")
+			return reconcile.Result{}, nil
+		default:
+			reqLogger.Info("NOP")
+			return reconcile.Result{}, nil
+>>>>>>> eeec27e756813f0ca49e08e276155d8882a3a37d
 		}
 		reqLogger.Info("Cluster Config Update")
 		// instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
@@ -314,6 +399,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// return reconcile.Result{}, nil
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
+<<<<<<< HEAD
 		// our finalizer is present, so delete cluster first
 		deleteOptions := &kops.DeleteClusterOptions{ClusterName: kc.Name, Yes: true}
 
@@ -323,9 +409,25 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
 			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
 			//return reconcile.Result{}, err
+=======
+
+		//check if cluster still exists
+		exists, err := k.GetCluster(instance.Spec.KopsConfig)
+		if !exists {
+			reqLogger.WithValues("error", err).Info("Cluster is already deleted...")
+		} else if err != nil {
+			reqLogger.WithValues("error", err).Info("Error getting cluster")
+			return reconcile.Result{}, err
+		} else {
+			err = k.DeleteCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				//error deleting cluster
+				return reconcile.Result{}, err
+			}
+>>>>>>> eeec27e756813f0ca49e08e276155d8882a3a37d
 		}
 
-		reqLogger.Info("Cluster Deleted")
+		// our finalizer is present, so delete cluster first
 		// remove our finalizer from the list and update it.
 		instance.ObjectMeta.Finalizers = utils.Remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
 

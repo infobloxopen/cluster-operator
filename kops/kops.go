@@ -121,7 +121,6 @@ func NewKops() (*KopsCmd, error) {
 //}
 
 func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) error {
-
 	pwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -178,7 +177,30 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (str
 	return string(out.Bytes()), nil
 }
 
+<<<<<<< HEAD
 func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
+=======
+func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, error) {
+	kopsCmd := "/usr/local/bin/" +
+		"docker run" +
+		utils.GetDockerEnvFlags(k.envs) +
+		" soheileizadi/kops:v1.0" +
+		" get cluster " +
+		" --state=" + cluster.StateStore +
+		" --name=" + cluster.Name
+	exists := true
+	err := utils.RunStreamingCmd(kopsCmd)
+	if err != nil {
+		if strings.Contains(err.Error(), "exit status 1") {
+			exists = false
+		}
+		return exists, err
+	}
+	return exists, nil
+}
+
+func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
+>>>>>>> eeec27e756813f0ca49e08e276155d8882a3a37d
 
 	if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
 		return "", nil
