@@ -5,6 +5,7 @@ export CLUSTER_OPERATOR_DEVELOPMENT ?= true
 export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
 OPERATOR_SDK_VERSION := v0.15.2
+KOPS_VERSION := v1.16.0
 
 .id:
 	git config user.email | awk -F@ '{print $$1}' > .id
@@ -16,6 +17,13 @@ OPERATOR_SDK_VERSION := v0.15.2
 
 operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 
+.bin/kops:
+	mkdir -p .bin
+	curl --fail -Lo $@ https://github.com/kubernetes/kops/releases/download/${KOPS_VERSION}/kops-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64
+	chmod +x $@
+
+kops: .bin/kops
+
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
 	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
 
@@ -26,7 +34,7 @@ operator-chart:
 
 deploy: .id deploy/cluster.yaml generate operator-chart operator-chart operator-todo
 
-deploy-local: .id deploy/cluster.yaml generate operator-crds operator-todo
+deploy-local: .id deploy/cluster.yaml generate kops operator-crds operator-todo
 
 operator-crds:
 	kubectl apply -f deploy/cluster-operator/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
