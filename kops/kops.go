@@ -347,14 +347,14 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		" soheileizadi/kops:v1.0" +
 		" --state=" + cluster.StateStore +
 		" export kubecfg --name=" + cluster.Name +
-		" --kubeconfig=/tmp/config.yaml"
+		" --kubeconfig=/tmp/config-" + cluster.Name
 
 	err = utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
-	file, err := ioutil.ReadFile("tmp/config.yaml")
+	file, err := ioutil.ReadFile("tmp/config+-" + cluster.Name)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
