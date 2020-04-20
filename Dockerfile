@@ -25,8 +25,18 @@ ENV AWS_SECRET_ACCESS_KEY=0vcAYtBJEhisisfakeMDk4V5MqfUtUnH
 RUN mkdir build
 COPY --from=builder ${SRC}/build /
 
-COPY --from=builder ${SRC}/config config
-RUN ls
+ARG AWSCLI_VERSION=1.16.312
+ARG KOPS_VERSION=v1.16.0
+ARG KUBECTL_VERSION=v1.16.2
+
+RUN  apk add --update --no-cache bash python jq ca-certificates groff less \
+  && apk add --update --no-cache --virtual build-deps py-pip curl \
+  && pip install --upgrade --no-cache-dir awscli==$AWSCLI_VERSION
+
+ADD https://github.com/kubernetes/kops/releases/download/${KOPS_VERSION}/kops-linux-amd64 .bin/kops
+ADD https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl /usr/local/bin/kubectl
+RUN chmod +x .bin/kops /usr/local/bin/kubectl
+
 RUN chmod +x /manager
 
 ENTRYPOINT ["/manager"]

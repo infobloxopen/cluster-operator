@@ -80,7 +80,7 @@ func RunCmd(cmdString string) (*bytes.Buffer, error) {
 	}
 
 	out.Reset()
-	cmd = exec.Command("/bin/bash", "./tmp/cmd.sh")
+	cmd = exec.Command("/bin/sh", "./tmp/cmd.sh")
 	cmd.Stdout = &out
 	var errout bytes.Buffer
 	cmd.Stderr = &errout
@@ -115,7 +115,7 @@ func RunStreamingCmd(cmdString string) error {
 	}
 
 	out.Reset()
-	command := New(context.TODO(), nil, "/bin/bash", "./tmp/cmd.sh")
+	command := New(context.TODO(), nil, "/bin/sh", "./tmp/cmd.sh")
 
 	if err := command.Start(); err != nil {
 		return err

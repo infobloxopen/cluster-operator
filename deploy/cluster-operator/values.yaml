@@ -11,15 +11,14 @@ image:
 nameOverride: ""
 fullnameOverride: ""
 
-service:
-  type: ClusterIP
-  port: 80
+stateStore: s3://kops.state.seizadi.infoblox.com
+operatorName: cluster-operator
 
 vault:
   aws:
     path: /cluster-operator/aws-secrets
   imagepullsecret:
-    path: /docker/infobloxctokey
+    path: /image-pull/docker
 
 resources: {}
   # We usually recommend not to specify default resources and to leave this as a conscious
