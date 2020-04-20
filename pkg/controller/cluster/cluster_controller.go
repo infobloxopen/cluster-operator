@@ -60,6 +60,10 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 
 			return true
 		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Evaluates to false if the object has been confirmed deleted.
+			return e.DeleteStateUnknown
+		},
 	}
 
 	// Watch for changes to primary resource Cluster
@@ -101,6 +105,7 @@ type ReconcileCluster struct {
 func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Cluster")
+
 	// Fetch the Cluster instance
 	instance := &clusteroperatorv1alpha1.Cluster{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -115,7 +120,6 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
 	// TODO - We should maybe catch lack of kops configuration earlier in operator startup
@@ -145,16 +149,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 
-		tempConfigFile := instance.Spec.Name + ".yaml"
-		err = utils.CopyBufferContentsToTempFile([]byte(instance.Spec.Config), tempConfigFile)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Run State Machine
-		// PENDING -> SETUP -> DONE
-		// switch instance.Status.Phase {
-		// case clusteroperatorv1alpha1.ClusterPending:
+		//go through the cycle of phases
+		//PENDING: CREATING CLUSTER
 		reqLogger.Info("Phase: PENDING")
 		//creating cluster
 		err := k.ReplaceCluster(instance.Spec)
@@ -163,14 +159,14 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			reqLogger.Error(err, "error creating cluster")
 			return reconcile.Result{}, err
 		}
-		reqLogger.Info("Cluster Config Update")
-		// instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
+		reqLogger.Info("Cluster Config Updated")
 
-		// case clusteroperatorv1alpha1.ClusterUpdate:
 		instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
+
+		//UPDATIG: UPDATING CLUSTER
 		reqLogger.Info("Phase: UPDATE")
 
 		err = k.UpdateCluster(kc)
@@ -217,8 +213,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
-		// instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
-		// case clusteroperatorv1alpha1.ClusterSetup:
+		// SETUP: CLUSTER VALIDATION
 		reqLogger.Info("Phase: SETUP")
 
 		// Setenv required if not using default .kube/config,
@@ -250,18 +245,27 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{RequeueAfter: time.Minute * 5}, nil
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
-		err := k.DeleteCluster(kc)
-		if err != nil {
-			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
-			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
-			//return reconcile.Result{}, err
+
+		//check if cluster still exists
+		exists, err := k.GetCluster(instance.Spec.KopsConfig)
+		if !exists {
+			reqLogger.WithValues("error", err).Info("Cluster is already deleted...")
+		} else if err != nil {
+			reqLogger.WithValues("error", err).Info("Error getting cluster")
+			return reconcile.Result{}, err
+		} else {
+			err = k.DeleteCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				//error deleting cluster
+				return reconcile.Result{}, err
+			}
 		}
 
-		reqLogger.Info("Cluster Deleted")
+		// our finalizer is present, so delete cluster first
 		// remove our finalizer from the list and update it.
 		instance.ObjectMeta.Finalizers = utils.Remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
 
-		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
+		if err := r.client.Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
 
