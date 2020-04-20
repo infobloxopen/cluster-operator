@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"strings"
 
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
@@ -64,7 +63,7 @@ func NewKops() (*KopsCmd, error) {
 //	if err != nil {
 //		return nil, err
 //	}
-//	kopsCmd := "/usr/local/bin/docker"
+//	kopsCmd := ".bin/docker"
 //	kopsArgs := []string {"run"}
 //	kopsArgs = append(kopsArgs, utils.GetDockerEnvFlagss(k.envs)...)
 //	kopsArgs = append(kopsArgs,
@@ -96,7 +95,7 @@ func NewKops() (*KopsCmd, error) {
 //	if err != nil {
 //		return err
 //	}
-//	kopsCmdStr := "/usr/local/bin/" +
+//	kopsCmdStr := ".bin/" +
 //		"docker run" +
 //		" -v " + pwd + "/ssh:/ssh " +
 //		utils.GetDockerEnvFlags(k.envs) +
@@ -121,24 +120,14 @@ func NewKops() (*KopsCmd, error) {
 //}
 
 func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) error {
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	tempConfigFile := cluster.Name + ".yaml"
-	err = utils.CopyBufferContentsToTempFile([]byte(cluster.Config), tempConfigFile)
+	err := utils.CopyBufferContentsToTempFile([]byte(cluster.Config), tempConfigFile)
 	if err != nil {
 		return err
 	}
 
-	kopsCmdStr := "/usr/local/bin/" +
-		"docker run" +
-		" -v " + pwd + "/ssh:/ssh " +
-		" -v " + pwd + "/tmp/" + tempConfigFile + ":/tmp/" + tempConfigFile +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
-		" replace cluster" +
+	kopsCmdStr := ".bin/" +
+		"kops replace cluster" +
 		" -f /tmp/" + tempConfigFile +
 		" --state=" + cluster.KopsConfig.StateStore +
 		" --force"
@@ -156,11 +145,8 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		return nil
 	}
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
-		" update cluster " +
+	kopsCmd := ".bin/" +
+		"kops update cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
@@ -178,11 +164,8 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 }
 
 func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, error) {
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
-		" get cluster " +
+	kopsCmd := ".bin/" +
+		"kops get cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name
 	exists := true
@@ -202,24 +185,14 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		return nil
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	// Make sure we have config in tmp/config.yaml
-	_, err = k.GetKubeConfig(cluster)
+	_, err := k.GetKubeConfig(cluster)
 	if err != nil {
 		return err
 	}
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" -e KUBECONFIG=/kube/config.yaml" +
-		" -v " + pwd + "/tmp:/kube" +
-		" soheileizadi/kops:v1.0" +
-		" rolling-update cluster " +
+	kopsCmd := ".bin/" +
+		"kops rolling-update cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
@@ -238,12 +211,9 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 
 func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := ".bin/" +
+		"kops delete cluster --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
-		" delete cluster --name=" + cluster.Name +
 		" --yes"
 
 	//out, err := utils.RunCmd(kopsCmd)
@@ -257,7 +227,7 @@ func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 
 //func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) (string, error) {
 //
-//	//kopsCmd := "/usr/local/bin/docker"
+//	//kopsCmd := ".bin/docker"
 //	kopsArgs := []string{"run", "--env-file=tmp/kops_env"}
 //	kopsArgs = append(kopsArgs,
 //		"soheileizadi/kops:v1.0",
@@ -294,24 +264,14 @@ func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (c
 		return status, nil
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return status, err
-	}
-
 	// Make sure we have config in tmp/config.yaml
-	_, err = k.GetKubeConfig(cluster)
+	_, err := k.GetKubeConfig(cluster)
 	if err != nil {
 		return status, err
 	}
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" -e KUBECONFIG=/kube/config.yaml" +
-		" -v " + pwd + "/tmp:/kube" +
-		" soheileizadi/kops:v1.0" +
-		" validate cluster" +
+	kopsCmd := ".bin/" +
+		"kops validate cluster" +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name + " -o json"
 	out, err := utils.RunCmd(kopsCmd)
@@ -336,20 +296,12 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 
 	config := clusteroperatorv1alpha1.KubeConfig{}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return config, err
-	}
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		" -v " + pwd + "/tmp:/tmp " +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := ".bin/" +
+		"kops export kubecfg --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
-		" export kubecfg --name=" + cluster.Name +
 		" --kubeconfig=/tmp/config.yaml"
 
-	err = utils.RunStreamingCmd(kopsCmd)
+	err := utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
