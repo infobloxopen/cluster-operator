@@ -2,6 +2,7 @@
 .id
 deploy/cluster.yaml
 .bin/
+.image-*
 
 
 .idea

@@ -4,7 +4,12 @@ export AWS_REGION		     ?= $(shell aws configure get region)
 export CLUSTER_OPERATOR_DEVELOPMENT ?= true
 export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
+OPERATOR_NAME ?= clusterop
+REGISTRY      := infoblox
+IMAGE_REPO    := clusteroperator
+
 OPERATOR_SDK_VERSION := v0.15.2
+GIT_COMMIT 		:= $(shell git describe --tags --always || echo pre-commit)
 
 .id:
 	git config user.email | awk -F@ '{print $$1}' > .id
@@ -25,6 +30,15 @@ operator-chart:
 		--set crds.create=true
 
 deploy: .id deploy/cluster.yaml generate operator-chart operator-chart operator-todo
+
+image: .image-$(GIT_COMMIT)
+
+push: image
+	docker push $(REGISTRY)/$(IMAGE_REPO):$(GIT_COMMIT)
+
+.image-$(GIT_COMMIT):
+	OPERATOR_NAME=$(OPERATOR_NAME) .bin/operator-sdk-$(OPERATOR_SDK_VERSION) build $(REGISTRY)/$(IMAGE_REPO):$(GIT_COMMIT) --verbose
+	touch $@
 
 deploy-local: .id deploy/cluster.yaml generate operator-crds operator-todo
 
