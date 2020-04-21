@@ -142,6 +142,7 @@ type ClusterStatus struct {
 	Phase ClusterPhase `json:"phase,omitempty"`
 	// Kops Cluster Status
 	KopsStatus KopsStatus `json:"kops_status,omitempty"`
+	Validated  bool       `json:"validated,omitempty"`
 	KubeConfig KubeConfig `json:"kubeconfig,omitempty"`
 }
 

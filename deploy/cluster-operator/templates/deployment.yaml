@@ -3,8 +3,6 @@ kind: Deployment
 metadata:
   name: {{ include "cluster-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
-  labels:
-{{ include "cluster-operator.labels" . | indent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -21,7 +19,7 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           env:
           - name: OPERATOR_NAME
             value: {{ .Values.operatorName  }}
@@ -51,11 +49,11 @@ spec:
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-    {{- with .Values.affinity }}
+      {{- with .Values.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
-    {{- with .Values.tolerations }}
+      {{- end }}
+      {{- with .Values.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
-    {{- end }}
+     {{- end }}

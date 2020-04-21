@@ -181,9 +181,9 @@ func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, 
 
 func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
-	if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
-		return nil
-	}
+	// if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
+	// 	return nil
+	// }
 
 	// Make sure we have config in tmp/config.yaml
 	_, err := k.GetKubeConfig(cluster)
@@ -195,6 +195,7 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		"kops rolling-update cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
+		" --fail-on-validate-error=false" +
 		// FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
 		// " --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
@@ -297,9 +298,9 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 	config := clusteroperatorv1alpha1.KubeConfig{}
 
 	kopsCmd := "./.bin/" +
-		"kops export kubecfg --name=" + cluster.Name +
+		"kops export kubecfg" +
+		" --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
-		" export kubecfg --name=" + cluster.Name +
 		" --kubeconfig=/tmp/config-" + cluster.Name
 
 	err := utils.RunStreamingCmd(kopsCmd)
@@ -307,7 +308,7 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
-	file, err := ioutil.ReadFile("tmp/config+-" + cluster.Name)
+	file, err := ioutil.ReadFile("tmp/config-" + cluster.Name)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}

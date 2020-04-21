@@ -18,10 +18,6 @@ RUN ls build
 FROM alpine:3.9
 
 ENV SRC=/go/src/cluster-operator
-ENV WATCH_NAMESPACE=hryan
-ENV KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com
-ENV AWS_ACCESS_KEY_ID=AEJ9IveryfakehF728
-ENV AWS_SECRET_ACCESS_KEY=0vcAYtBJEhisisfakeMDk4V5MqfUtUnH
 RUN mkdir build
 COPY --from=builder ${SRC}/build /
 
