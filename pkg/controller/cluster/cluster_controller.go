@@ -3,10 +3,7 @@ package cluster
 import (
 	"context"
 	"os"
-<<<<<<< HEAD
-=======
 	"time"
->>>>>>> 8b0cf8752325acafc45f54d1c87bfc515b3251b6
 
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
