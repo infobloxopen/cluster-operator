@@ -297,9 +297,9 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 	config := clusteroperatorv1alpha1.KubeConfig{}
 
 	kopsCmd := ".bin/" +
-		"kops export kubecfg --name=" + cluster.Name +
+		"kops export kubecfg" +
+		" --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
-		" export kubecfg --name=" + cluster.Name +
 		" --kubeconfig=/tmp/config-" + cluster.Name
 
 	err := utils.RunStreamingCmd(kopsCmd)
