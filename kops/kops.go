@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"strings"
 )
 
 type KopsCmd struct {
@@ -93,7 +94,6 @@ func NewKops() (*KopsCmd, error) {
 //}
 
 func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) error {
-
 	tempConfigFile := cluster.Name + ".yaml"
 	err := utils.CopyBufferContentsToTempFile([]byte(cluster.Config), tempConfigFile)
 	if err != nil {
@@ -142,6 +142,25 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 	}
 
 	return nil
+}
+
+func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, error) {
+	kopsCmd := "/usr/local/bin/" +
+		"docker run" +
+		utils.GetDockerEnvFlags(k.envs) +
+		" soheileizadi/kops:v1.0" +
+		" get cluster " +
+		" --state=" + cluster.StateStore +
+		" --name=" + cluster.Name
+	exists := true
+	err := utils.RunStreamingCmd(kopsCmd)
+	if err != nil {
+		if strings.Contains(err.Error(), "exit status 1") {
+			exists = false
+		}
+		return exists, err
+	}
+	return exists, nil
 }
 
 func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
@@ -277,14 +296,22 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		viper.GetString("kops.container") +
 		" --state=" + cluster.StateStore +
 		" export kubecfg --name=" + cluster.Name +
+<<<<<<< HEAD
 		" --kubeconfig=" + viper.GetString("kops.kube.dir") + "/config.yaml"
+=======
+		" --kubeconfig=/tmp/config-" + cluster.Name
+>>>>>>> upstream/master
 
 	err := k.runStreamingCmd(kopsCmd)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
+<<<<<<< HEAD
 	file, err := ioutil.ReadFile(viper.GetString("tmp.dir") + "/config.yaml")
+=======
+	file, err := ioutil.ReadFile("tmp/config+-" + cluster.Name)
+>>>>>>> upstream/master
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}

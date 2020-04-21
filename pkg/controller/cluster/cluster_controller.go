@@ -3,21 +3,30 @@ package cluster
 import (
 	"context"
 	"github.com/spf13/viper"
+	"os"
+	"time"
 
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+
 	"github.com/infobloxopen/cluster-operator/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+
+	// "k8s.io/apimachinery/pkg/api/errors"
 
 	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	//"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	//"k8s.io/kops/cmd/kops"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
@@ -43,8 +52,23 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	pred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+
+			if e.MetaNew.GetGeneration() == e.MetaOld.GetGeneration() {
+				return false
+			}
+
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			// Evaluates to false if the object has been confirmed deleted.
+			return e.DeleteStateUnknown
+		},
+	}
+
 	// Watch for changes to primary resource Cluster
-	err = c.Watch(&source.Kind{Type: &clusteroperatorv1alpha1.Cluster{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &clusteroperatorv1alpha1.Cluster{}}, &handler.EnqueueRequestForObject{}, pred)
 	if err != nil {
 		return err
 	}
@@ -82,6 +106,7 @@ type ReconcileCluster struct {
 func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling Cluster")
+
 	// Fetch the Cluster instance
 	instance := &clusteroperatorv1alpha1.Cluster{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
@@ -96,10 +121,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
 	}
-
 	//Finalizer name
 	clusterFinalizer := "cluster.finalizer.cluster-operator.infobloxopen.github.com"
-
 	// TODO - We should maybe catch lack of kops configuration earlier in operator startup
 	k, err := kops.NewKops()
 	if err != nil {
@@ -107,17 +130,18 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		return reconcile.Result{}, err
 	}
 
-	//If the cluster is not waiting for deletion, handle it normally
+	kc := CheckKopsDefaultConfig(instance.Spec)
+	// If the cluster is not waiting for deletion, handle it normally
 	if instance.ObjectMeta.DeletionTimestamp.IsZero() {
+
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
-			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
+			instance.Spec.KopsConfig = kc
 			if err := r.client.Update(context.TODO(), instance); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
-
 		// Add the finalizer and update the object
 		if !utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
 			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, clusterFinalizer)
@@ -126,97 +150,127 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			}
 		}
 
-		// Run State Machine
-		// PENDING -> SETUP -> DONE
-		switch instance.Status.Phase {
-		case clusteroperatorv1alpha1.ClusterPending:
-			// Both updates and new clusters start with Kops replace
-			// Adds the manifest to the kops state store without applying changes
-			reqLogger.Info("Phase: PENDING")
-			err := k.ReplaceCluster(instance.Spec)
-			if err != nil {
-				reqLogger.Error(err, "error creating kops command")
-				return reconcile.Result{}, err
-			}
-			reqLogger.Info("Cluster Created")
-			instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
-		case clusteroperatorv1alpha1.ClusterUpdate:
-			// Kops update is required for both new and updated cluster configurations
-			reqLogger.Info("Phase: UPDATE")
-			err := k.UpdateCluster(instance.Spec.KopsConfig)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
-			// We call rolling-update to apply these changes
-			err = k.RollingUpdateCluster(instance.Spec.KopsConfig)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			reqLogger.Info("Cluster Updated")
-			instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
-		case clusteroperatorv1alpha1.ClusterSetup:
-			reqLogger.Info("Phase: SETUP")
-			status, err := k.ValidateCluster(instance.Spec.KopsConfig)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-			instance.Status.KopsStatus = clusteroperatorv1alpha1.KopsStatus{}
-			if len(status.Failures) > 0 {
-				instance.Status.KopsStatus.Failures = status.Failures
-				reqLogger.Info("Cluster Not Ready")
-			} else if len(status.Nodes) > 0 {
-				instance.Status.KopsStatus.Nodes = status.Nodes
-				reqLogger.Info("Cluster Created")
-				instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
-				config, err := k.GetKubeConfig(instance.Spec.KopsConfig)
-				if err != nil {
-					return reconcile.Result{}, err
-				}
-				instance.Status.KubeConfig = config
-				reqLogger.Info("KUBECONFIG Updated")
-			} else {
-				// FIXME - If we get this state try validate again!!!
-				reqLogger.Info("Validate Returned Unexpected Result")
-			}
-		case clusteroperatorv1alpha1.ClusterDone:
-			reqLogger.Info("Phase: DONE")
-			return reconcile.Result{}, nil
-		default:
-			reqLogger.Info("NOP")
-			return reconcile.Result{}, nil
-		}
+		//go through the cycle of phases
+		//PENDING: CREATING CLUSTER
+		reqLogger.Info("Phase: PENDING")
+		//creating cluster
+		err := k.ReplaceCluster(instance.Spec)
 
-		// Update the Cluster instance, setting the status to the respective phase:
+		if err != nil {
+			reqLogger.Error(err, "error creating cluster")
+			return reconcile.Result{}, err
+		}
+		reqLogger.Info("Cluster Config Updated")
+
+		instance.Status.Phase = clusteroperatorv1alpha1.ClusterUpdate
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
 
-		if instance.Status.Phase == clusteroperatorv1alpha1.ClusterSetup {
-			// TODO - Set to time.Duration depending on back-off behavior
-			//return reconcile.Result{RequeueAfter: time.Minute}, nil
-			return reconcile.Result{Requeue: true}, nil
+		//UPDATIG: UPDATING CLUSTER
+		reqLogger.Info("Phase: UPDATE")
+
+		err = k.UpdateCluster(kc)
+
+		if err != nil {
+			reqLogger.Error(err, "error updating cluster")
+			return reconcile.Result{}, err
 		}
 
-		// Don't requeue. We should get called to reconcile when the CR changes.
-		return reconcile.Result{}, nil
+		//get kubeconfig
+		var mode os.FileMode = 509
+		err = os.MkdirAll("./tmp", mode)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		_, err = os.Create("tmp/config-" + kc.Name)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		var config clusteroperatorv1alpha1.KubeConfig
+		config, err = k.GetKubeConfig(kc)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		instance.Status.KubeConfig = config
+		reqLogger.Info("KUBECONFIG Updated")
+
+		//rolling udpates
+		os.Setenv("KUBECONFIG", "tmp/config-"+kc.Name)
+
+		//TODO: Right now, using defaults for intervals. Need to make changable
+		// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
+		// We call rolling-update to apply these changes
+		err = k.RollingUpdateCluster(kc)
+		if err != nil {
+			reqLogger.Error(err, "error performing rolling update on cluster")
+			return reconcile.Result{}, err
+		}
+		reqLogger.Info("Cluster Updated")
+		instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
+		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
+			return reconcile.Result{}, err
+		}
+		// SETUP: CLUSTER VALIDATION
+		reqLogger.Info("Phase: SETUP")
+
+		// Setenv required if not using default .kube/config,
+		// the --kubeconfig option does not currently work for kops validate (1.18.2-alpha2)
+		os.Setenv("KUBECONFIG", "tmp/config-"+kc.Name)
+		status, err := k.ValidateCluster(kc)
+
+		instance.Status.KopsStatus = clusteroperatorv1alpha1.KopsStatus{}
+		if err != nil {
+			reqLogger.Info("Cluster Not Ready")
+			// instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+		} else if len(status.Nodes) > 0 {
+			instance.Status.KopsStatus.Nodes = status.Nodes
+			reqLogger.Info("Cluster Created")
+			instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
+			reqLogger.Info("Phase: DONE")
+			if err := r.client.Status().Update(context.TODO(), instance); err != nil {
+				return reconcile.Result{}, err
+			}
+			//requeues every ten minutes to make sure its synced if any manual changes were done
+			return reconcile.Result{RequeueAfter: time.Minute * 10}, nil
+		} else {
+			// FIXME - If we get this state try validate again!!!
+			reqLogger.Info("Validate Returned Unexpected Result")
+			// instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
+		}
+
+		//It did not finish validating, requeue in five minutes
+		return reconcile.Result{RequeueAfter: time.Minute * 5}, nil
 
 	} else if utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
-		// our finalizer is present, so delete cluster first
-		err := k.DeleteCluster(instance.Spec.KopsConfig)
-		if err != nil {
-			// FIXME - Ensure that delete implementation is idempotent and safe to invoke multiple times.
-			// If we call delete and the cluster is not present it will cause error and it will keep erroring out
-			//return reconcile.Result{}, err
+
+		//check if cluster still exists
+		exists, err := k.GetCluster(instance.Spec.KopsConfig)
+		if !exists {
+			reqLogger.WithValues("error", err).Info("Cluster is already deleted...")
+		} else if err != nil {
+			reqLogger.WithValues("error", err).Info("Error getting cluster")
+			return reconcile.Result{}, err
+		} else {
+			err = k.DeleteCluster(instance.Spec.KopsConfig)
+			if err != nil {
+				//error deleting cluster
+				return reconcile.Result{}, err
+			}
 		}
 
-		reqLogger.Info("Cluster Deleted")
+		// our finalizer is present, so delete cluster first
 		// remove our finalizer from the list and update it.
 		instance.ObjectMeta.Finalizers = utils.Remove(instance.ObjectMeta.Finalizers, clusterFinalizer)
 
 		if err := r.client.Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
 		}
+
+		//TODO: error when resource edited and requeued, but already deleted. Do we want that?
 
 	}
 	// Stop reconciliation as the item is being deleted
@@ -230,7 +284,7 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 	// we want to use a few inputs to pull information from the CMDB or
 	// another controller that would hold the config information based on
 	// the supplied infra info
-	
+
 	// Due to changes to use Kops manifests, the only required fields are Name and StateStore
 	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
 		Name:        c.Name + "." + viper.GetString("kops.cluster.dns.zone"),
@@ -242,30 +296,30 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 		// Vpc:         "vpc-0a75b33895655b46a",
 		// Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
-	
-	if (c.KopsConfig.MasterCount > 0) {
+
+	if c.KopsConfig.MasterCount > 0 {
 		defaultConfig.MasterCount = c.KopsConfig.MasterCount
 	}
-	
-	if len (c.KopsConfig.MasterEc2)  != 0 {
+
+	if len(c.KopsConfig.MasterEc2) != 0 {
 		defaultConfig.MasterEc2 = c.KopsConfig.MasterEc2
 	}
-	
+
 	if (c.KopsConfig.WorkerCount) > 0 {
 		defaultConfig.WorkerCount = c.KopsConfig.WorkerCount
 	}
-	
-	if len (c.KopsConfig.WorkerEc2) > 0 {
+
+	if len(c.KopsConfig.WorkerEc2) > 0 {
 		defaultConfig.WorkerEc2 = c.KopsConfig.WorkerEc2
 	}
-	
-	if len (c.KopsConfig.Vpc) > 0 {
+
+	if len(c.KopsConfig.Vpc) > 0 {
 		defaultConfig.Vpc = c.KopsConfig.Vpc
 	}
-	
+
 	if len(c.KopsConfig.Zones) > 0 {
 		c.KopsConfig.Zones = c.KopsConfig.Zones
 	}
-	
+
 	return defaultConfig
 }
