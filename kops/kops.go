@@ -151,8 +151,8 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
-		" --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
-		"IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
+		// " --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
+		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
 	err := utils.RunStreamingCmd(kopsCmd)
