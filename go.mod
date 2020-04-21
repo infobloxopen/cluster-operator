@@ -3,6 +3,7 @@ module github.com/infobloxopen/cluster-operator
 go 1.13
 
 require (
+	github.com/go-delve/delve v1.4.0 // indirect
 	github.com/operator-framework/operator-sdk v0.15.2
 	github.com/pkg/errors v0.8.1
 	github.com/sirupsen/logrus v1.4.2
@@ -12,6 +13,7 @@ require (
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v12.0.0+incompatible
 	sigs.k8s.io/controller-runtime v0.4.0
+    github.com/spf13/viper v1.6.2
 )
 
 // Pinned to kubernetes-1.16.2

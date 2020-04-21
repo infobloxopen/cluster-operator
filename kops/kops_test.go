@@ -1,7 +1,10 @@
 package kops
 
 import (
+	"bytes"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
+	"strings"
+	"testing"
 )
 
 var kopsConfig clusteroperatorv1alpha1.KopsConfig = clusteroperatorv1alpha1.KopsConfig{
@@ -20,44 +23,88 @@ type testCase struct {
 	found bool
 }
 
-// FIXME - Put this back in when we figure out what to do about runing Cmd.Run() native
-//func TestCreateCluster(t *testing.T)  {
-//	k, _ := NewKops()
-//	k.envs = [][]string {{"key1", "value1"}, {"key2", "value2"}}
-//	values := []testCase{
-//		{"/usr/local/bin/docker", false},
-//		{"run", false},
-//		{ "-e", false},
-//		{ "key1=value1", false},
-//		{ "key2=value2", false},
-//		{"create", false},
-//		{"cluster", false},
-//		{"--name=" + kopsConfig.Name, false},
-//		{"--state=" + kopsConfig.StateStore, false},
-//		{"--ssh-public-key=" + k.publicKey, false},
-//		{"--vpc=" + kopsConfig.Vpc, false},
-//		{"--master-count=" + strconv.Itoa(kopsConfig.MasterCount), false},
-//		{"--master-size=" + kopsConfig.MasterEc2, false},
-//		{"--node-count=" + strconv.Itoa(kopsConfig.WorkerCount), false},
-//		{"--node-size=" + kopsConfig.WorkerEc2, false},
-//		{"--zones=" + strings.Join(kopsConfig.Zones, ","), false},
-//	}
-//
-//	cmd, _ := k.CreateCluster(context.TODO(), kopsConfig)
-//	cmdString := cmd.GetCmdString()
-//
-//	for _, c := range cmdString {
-//		for i, v := range values {
-//			if (v.value == c) {
-//				values[i].found = true
-//				break
-//			}
-//		}
-//	}
-//
-//	for _, v := range values {
-//		if (v.found == false) {
-//			t.Error("Expected ", v.value, "not found")
-//		}
-//	}
-//}
+var cmd string
+
+func mockRunStreamingCmd(cmdString string) error {
+	cmd = cmdString
+	return nil
+}
+
+func mockRunCmd(cmdString string) (*bytes.Buffer, error) {
+	cmd = cmdString
+	return nil, nil
+}
+
+func TestCreateCluster(t *testing.T) {
+	k, err := NewKops()
+	if err != nil {
+		t.Error("Expected no error got", err)
+		return
+	}
+
+	k.runStreamingCmd = mockRunStreamingCmd
+	k.runCmd = mockRunCmd
+
+	//values := []testCase{
+	//	{"/usr/local/bin/docker", false},
+	//	{"run", false},
+	//	{ "-e", false},
+	//	{ "key1=value1", false},
+	//	{ "key2=value2", false},
+	//	{"create", false},
+	//	{"cluster", false},
+	//	{"--name=" + kopsConfig.Name, false},
+	//	{"--state=" + kopsConfig.StateStore, false},
+	//	{"--ssh-public-key=" + k.publicKey, false},
+	//	{"--vpc=" + kopsConfig.Vpc, false},
+	//	{"--master-count=" + strconv.Itoa(kopsConfig.MasterCount), false},
+	//	{"--master-size=" + kopsConfig.MasterEc2, false},
+	//	{"--node-count=" + strconv.Itoa(kopsConfig.WorkerCount), false},
+	//	{"--node-size=" + kopsConfig.WorkerEc2, false},
+	//	{"--zones=" + strings.Join(kopsConfig.Zones, ","), false},
+	//}
+
+	values := []testCase{
+		{"run", false},
+		{"-v", false},
+		{"/TestCluster.yaml:/TestCluster.yaml", false},
+		{"-e", false},
+		{"AWS_ACCESS_KEY_ID=-e", false},
+		{"AWS_SECRET_ACCESS_KEY=-e", false},
+		{"KOPS_STATE_STORE=", false},
+		{"replace", false},
+		{"cluster", false},
+		{"-f", false},
+		{"/TestCluster.yaml", false},
+		{"--state=", false},
+		{"--force", false},
+	}
+
+	cluster := clusteroperatorv1alpha1.ClusterSpec{
+		Name:       "TestCluster",
+		Config:     "",
+		KopsConfig: clusteroperatorv1alpha1.KopsConfig{},
+	}
+
+	err = k.ReplaceCluster(cluster)
+	if err != nil {
+		t.Error("Expected no error got", err)
+		return
+	}
+
+	cmdValues := strings.Split(cmd, " ")
+	for _, c := range cmdValues {
+		for i, v := range values {
+			if v.value == c {
+				values[i].found = true
+				break
+			}
+		}
+	}
+
+	for _, v := range values {
+		if v.found == false {
+			t.Error("Expected ", v.value, "not found")
+		}
+	}
+}

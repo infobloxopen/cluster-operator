@@ -1,57 +1,29 @@
 package kops
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"strings"
-
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	"github.com/infobloxopen/cluster-operator/utils"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
 )
 
 type KopsCmd struct {
-	devMode   bool
-	publicKey string
-	envs      [][]string
+	devMode         bool
+	publicKey       string
+	runStreamingCmd func(string) error
+	runCmd          func(string) (*bytes.Buffer, error)
 }
 
 func NewKops() (*KopsCmd, error) {
-	reqEnvs := []string{
-		"AWS_ACCESS_KEY_ID",
-		"AWS_SECRET_ACCESS_KEY",
-		"KOPS_STATE_STORE",
-	}
-	filterEnvs := append([]string{
-		"SSH_KEY",
-		"CLUSTER_OPERATOR_DEVELOPMENT",
-	}, reqEnvs[0:]...)
-
-	// FIXME - Integrate public key function into the envs
 	k := KopsCmd{
-		publicKey: "kops.pub",
-		envs:      utils.GetEnvs(filterEnvs),
-	}
-
-	for _, pair := range k.envs {
-		if pair[0] == "CLUSTER_OPERATOR_DEVELOPMENT" {
-			k.devMode = true
-		} else if (pair[0] == "SSH_KEY") && (len(pair[1]) > 0) {
-			k.publicKey = pair[1]
-		}
-	}
-
-	missingEnvs := utils.CheckEnvs(k.envs, reqEnvs)
-	if len(missingEnvs) > 0 {
-		foundEnvs := []string{}
-		for _, e := range k.envs {
-			foundEnvs = append(foundEnvs, e[0])
-		}
-		return &k, errors.New("Missing environment variables for Kops " + strings.Join(missingEnvs, ", ") +
-			" Found Envs" + strings.Join(foundEnvs, ", "))
+		publicKey:       viper.GetString("kops.ssh.key"),
+		devMode:         viper.GetBool("development"),
+		runStreamingCmd: utils.RunStreamingCmd,
+		runCmd:          utils.RunCmd,
 	}
 
 	return &k, nil
@@ -122,29 +94,24 @@ func NewKops() (*KopsCmd, error) {
 
 func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) error {
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	tempConfigFile := cluster.Name + ".yaml"
-	err = utils.CopyBufferContentsToTempFile([]byte(cluster.Config), tempConfigFile)
+	err := utils.CopyBufferContentsToTempFile([]byte(cluster.Config), tempConfigFile)
 	if err != nil {
 		return err
 	}
 
-	kopsCmdStr := "/usr/local/bin/" +
-		"docker run" +
-		" -v " + pwd + "/ssh:/ssh " +
-		" -v " + pwd + "/tmp/" + tempConfigFile + ":/tmp/" + tempConfigFile +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := viper.GetString("docker.bin.path") + " run" +
+		// FIXME Don't think we will need this anymore
+		// " -v " + pwd + "/ssh:/ssh " +
+		" -v " + viper.GetString("tmp.dir") + "/" + tempConfigFile + ":" + viper.GetString("kops.kube.dir") + "/" + tempConfigFile +
+		utils.GetDockerEnvFlags() +
+		viper.GetString("kops.container") +
 		" replace cluster" +
-		" -f /tmp/" + tempConfigFile +
-		" --state=" + cluster.KopsConfig.StateStore +
+		" -f " + viper.GetString("kops.kube.dir") + "/" + tempConfigFile +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --force"
 
-	err = utils.RunStreamingCmd(kopsCmdStr)
+	err = k.runStreamingCmd(kopsCmd)
 	if err != nil {
 		return err
 	}
@@ -157,10 +124,9 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		return nil
 	}
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := viper.GetString("docker.bin.path") + " run" +
+		utils.GetDockerEnvFlags() +
+		viper.GetString("kops.container") +
 		" update cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
@@ -170,7 +136,7 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		" IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
-	err := utils.RunStreamingCmd(kopsCmd)
+	err := k.runStreamingCmd(kopsCmd)
 	if err != nil {
 		return err
 	}
@@ -184,33 +150,27 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		return nil
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return err
-	}
-
 	// Make sure we have config in tmp/config.yaml
-	_, err = k.GetKubeConfig(cluster)
+	_, err := k.GetKubeConfig(cluster)
 	if err != nil {
 		return err
 	}
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" -e KUBECONFIG=/kube/config.yaml" +
-		" -v " + pwd + "/tmp:/kube" +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := viper.GetString("docker.bin.path") +
+		" run" + utils.GetDockerEnvFlags() +
+		" -e KUBECONFIG=" + viper.GetString("kops.kube.dir") + "/config.yaml" +
+		" -v " + viper.GetString("tmp.dir") + ":" + viper.GetString("kops.kube.dir") +
+		viper.GetString("kops.container") +
 		" rolling-update cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
-		// FIXME - Add in when we switch to kops config
+		//FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
 		// " --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
 		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
-	err = utils.RunStreamingCmd(kopsCmd)
+	err = k.runStreamingCmd(kopsCmd)
 	if err != nil {
 		return err
 	}
@@ -220,16 +180,15 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 
 func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := viper.GetString("docker.bin.path") + " run" +
+		utils.GetDockerEnvFlags() +
+		viper.GetString("kops.container") +
 		" --state=" + cluster.StateStore +
 		" delete cluster --name=" + cluster.Name +
 		" --yes"
 
 	//out, err := utils.RunCmd(kopsCmd)
-	err := utils.RunStreamingCmd(kopsCmd)
+	err := k.runStreamingCmd(kopsCmd)
 	if err != nil {
 		return err
 	}
@@ -276,27 +235,21 @@ func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (c
 		return status, nil
 	}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return status, err
-	}
-
 	// Make sure we have config in tmp/config.yaml
-	_, err = k.GetKubeConfig(cluster)
+	_, err := k.GetKubeConfig(cluster)
 	if err != nil {
 		return status, err
 	}
 
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" -e KUBECONFIG=/kube/config.yaml" +
-		" -v " + pwd + "/tmp:/kube" +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := viper.GetString("docker.bin.path") + " run" +
+		utils.GetDockerEnvFlags() +
+		" -e KUBECONFIG=" + viper.GetString("kops.kube.dir") + "/config.yaml" +
+		" -v " + viper.GetString("tmp.dir") + ":" + viper.GetString("kops.kube.dir") +
+		viper.GetString("kops.container") +
 		" validate cluster" +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name + " -o json"
-	out, err := utils.RunCmd(kopsCmd)
+	out, err := k.runCmd(kopsCmd)
 	if err != nil {
 		return status, err
 	}
@@ -318,25 +271,20 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 
 	config := clusteroperatorv1alpha1.KubeConfig{}
 
-	pwd, err := os.Getwd()
-	if err != nil {
-		return config, err
-	}
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		" -v " + pwd + "/tmp:/tmp " +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := viper.GetString("docker.bin.path") + " run" +
+		" -v " + viper.GetString("tmp.dir") + ":" + viper.GetString("kops.kube.dir") +
+		utils.GetDockerEnvFlags() +
+		viper.GetString("kops.container") +
 		" --state=" + cluster.StateStore +
 		" export kubecfg --name=" + cluster.Name +
-		" --kubeconfig=/tmp/config.yaml"
+		" --kubeconfig=" + viper.GetString("kops.kube.dir") + "/config.yaml"
 
-	err = utils.RunStreamingCmd(kopsCmd)
+	err := k.runStreamingCmd(kopsCmd)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
-	file, err := ioutil.ReadFile("tmp/config.yaml")
+	file, err := ioutil.ReadFile(viper.GetString("tmp.dir") + "/config.yaml")
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}

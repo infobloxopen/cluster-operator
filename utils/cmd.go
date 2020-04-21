@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/spf13/viper"
 	"io"
 	"os"
 	"os/exec"
@@ -36,12 +37,12 @@ func CopyBufferContentsToFile(srcBuff []byte, destFile string) (err error) {
 // Temporary, used for writing Kops Manifest to file but exploring using STDIN instead
 func CopyBufferContentsToTempFile(srcBuff []byte, destFile string) (err error) {
 	var mode os.FileMode = 509
-	err = os.MkdirAll("./tmp", mode)
+	err = os.MkdirAll("." + viper.GetString("kops.kube.dir"), mode)
 	if err != nil {
 		return err
 	}
 
-	out, err := os.Create("./tmp/" + destFile)
+	out, err := os.Create("." + viper.GetString("kops.kube.dir") + "/" + destFile)
 	if err != nil {
 		return
 	}

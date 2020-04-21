@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"github.com/spf13/viper"
 	"os"
 	"strings"
 )
@@ -40,18 +41,9 @@ func CheckEnvs(envs [][]string, reqEnvs []string) []string {
 	return missingEnvs
 }
 
-func GetDockerEnvFlags(envs [][]string) string {
-	var envFlag string
-	for _, pair := range envs {
-		envFlag = envFlag + " -e " + strings.Join(pair, "=")
-	}
-	return envFlag
-}
-
-func GetDockerEnvFlagss(envs [][]string) []string {
-	envFlags := []string{}
-	for _, pair := range envs {
-		envFlags = append(envFlags, " -e "+strings.Join(pair, "="))
-	}
+func GetDockerEnvFlags() string {
+	envFlags := " -e AWS_ACCESS_KEY_ID=" + viper.GetString("aws.access.key.id") +
+		"-e AWS_SECRET_ACCESS_KEY=" + viper.GetString("aws.secret.access.key") +
+		"-e KOPS_STATE_STORE=" + viper.GetString("kops.state.store")
 	return envFlags
 }
