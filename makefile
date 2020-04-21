@@ -19,12 +19,12 @@ operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
 	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
 
-operator-chart:
+chart:
 	helm upgrade -i `cat .id`-cluster-operator --namespace `cat .id` \
-		deploy/cluster-operator \
+		charts/cluster-operator \
 		--set crds.create=true
 
-deploy: .id deploy/cluster.yaml generate operator-chart operator-chart operator-todo
+deploy: .id deploy/cluster.yaml generate chart-chart operator-todo
 
 deploy-local: .id deploy/cluster.yaml generate operator-crds operator-todo
 
@@ -62,5 +62,6 @@ test-vendor: vendor
 	[ -z "`git status --porcelain`" ] || { echo "file changes after updating vendoring, check that vendored packages were committed"; exit 1; }
 
 test:
-	go build ./...
+	go test ./...
+	helm lint --strict charts/cluster-operator
 	git diff --exit-code
