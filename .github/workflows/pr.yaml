@@ -51,7 +51,7 @@ jobs:
         GOPATH: ${{ github.workspace }}
       working-directory: ${{ github.workspace }}/src/github.com/infobloxopen/cluster-operator
       run: |
-        git fetch --depth=100 origin +refs/tags/*:refs/tags/*
+        # git fetch --depth=100 origin +refs/tags/*:refs/tags/*
         # FIXME: setup docker build user for infoblox docker hub
         #echo ${{ secrets.DOCKERHUB_PASSWORD }} | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
         # Setups up Github access with a provided Pat
