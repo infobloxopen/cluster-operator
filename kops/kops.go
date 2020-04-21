@@ -16,6 +16,7 @@ type KopsCmd struct {
 	devMode   bool
 	publicKey string
 	envs      [][]string
+	path      string
 }
 
 func NewKops() (*KopsCmd, error) {
@@ -33,6 +34,7 @@ func NewKops() (*KopsCmd, error) {
 	k := KopsCmd{
 		publicKey: "kops.pub",
 		envs:      utils.GetEnvs(filterEnvs),
+		path:      utils.GetEnvs([]string{"KOPS_PATH"})[0][1],
 	}
 
 	for _, pair := range k.envs {
@@ -95,7 +97,7 @@ func NewKops() (*KopsCmd, error) {
 //	if err != nil {
 //		return err
 //	}
-//	kopsCmdStr := ".bin/" +
+//	kopsCmdStr := k.path +
 //		"docker run" +
 //		" -v " + pwd + "/ssh:/ssh " +
 //		utils.GetDockerEnvFlags(k.envs) +
@@ -126,8 +128,8 @@ func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) er
 		return err
 	}
 
-	kopsCmdStr := ".bin/" +
-		"kops replace cluster" +
+	kopsCmdStr := k.path +
+		" replace cluster" +
 		" -f tmp/" + tempConfigFile +
 		" --state=" + cluster.KopsConfig.StateStore +
 		" --force"
@@ -145,14 +147,14 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		return nil
 	}
 
-	kopsCmd := ".bin/" +
-		"kops update cluster " +
+	kopsCmd := k.path +
+		" update cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
-		" --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
-		" IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
+		// " --lifecycle-overrides IAMRole=ExistsAndWarnIfChanges," +
+		// " IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
 	err := utils.RunStreamingCmd(kopsCmd)
@@ -164,8 +166,8 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 }
 
 func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, error) {
-	kopsCmd := ".bin/" +
-		"kops get cluster " +
+	kopsCmd := k.path +
+		" get cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name
 	exists := true
@@ -191,8 +193,8 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		return err
 	}
 
-	kopsCmd := ".bin/" +
-		"kops rolling-update cluster " +
+	kopsCmd := k.path +
+		" rolling-update cluster " +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
@@ -211,8 +213,8 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 
 func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
-	kopsCmd := ".bin/" +
-		"kops delete cluster --name=" + cluster.Name +
+	kopsCmd := k.path +
+		" delete cluster --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
 		" --yes"
 
@@ -270,8 +272,8 @@ func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (c
 		return status, err
 	}
 
-	kopsCmd := ".bin/" +
-		"kops validate cluster" +
+	kopsCmd := k.path +
+		" validate cluster" +
 		" --state=" + cluster.StateStore +
 		" --name=" + cluster.Name + " -o json"
 	out, err := utils.RunCmd(kopsCmd)
@@ -296,8 +298,8 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 
 	config := clusteroperatorv1alpha1.KubeConfig{}
 
-	kopsCmd := ".bin/" +
-		"kops export kubecfg" +
+	kopsCmd := k.path +
+		" export kubecfg" +
 		" --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
 		" --kubeconfig=/tmp/config-" + cluster.Name
