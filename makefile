@@ -8,6 +8,7 @@ REGISTRY      := infobloxcto
 IMAGE_REPO    := cluster-operator
 GIT_COMMIT 	  := $(shell git describe --tags --always || echo pre-commit)
 NAMESPACE	  ?= default
+IMAGE         ?= $(GIT_COMMIT)
 
 OPERATOR_SDK_VERSION := v0.15.2
 KOPS_VERSION := v1.16.0
@@ -38,10 +39,8 @@ operator-chart:
 		deploy/cluster-operator \
 		--set crds.create=true
 
-tmp/values.yaml:
-	sed "s/latest/$(GIT_COMMIT)/g" deploy/cluster-operator/values.yaml > $@
-
-helm-deploy: tmp/values.yaml
+helm-deploy: 
+	sed "s/latest/$(IMAGE)/g" deploy/cluster-operator/values.yaml > tmp/values.yaml
 	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
 
 deploy-local: .id deploy/cluster.yaml generate kops operator-crds operator-todo
