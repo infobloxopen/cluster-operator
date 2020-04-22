@@ -4,9 +4,14 @@ export AWS_REGION		     ?= $(shell aws configure get region)
 export CLUSTER_OPERATOR_DEVELOPMENT ?= true
 export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
+REGISTRY      := infobloxcto
+IMAGE_REPO    := cluster-operator
+GIT_COMMIT 	  := $(shell git describe --tags --always || echo pre-commit)
+NAMESPACE	  ?= default
+
 OPERATOR_SDK_VERSION := v0.15.2
 KOPS_VERSION := v1.16.0
-export KOPS_PATH ?= ".bin/kops"
+export KOPS_PATH ?= ".bin/kops"	
 
 .id:
 	git config user.email | awk -F@ '{print $$1}' > .id
@@ -18,12 +23,12 @@ export KOPS_PATH ?= ".bin/kops"
 
 operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 
-${KOPS_PATH}:
+$(KOPS_PATH):
 	mkdir -p .bin
 	curl --fail -Lo $@ https://github.com/kubernetes/kops/releases/download/${KOPS_VERSION}/kops-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64
 	chmod +x $@
 
-kops: ${KOPS_PATH}
+kops: $(KOPS_PATH)
 
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
 	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
@@ -33,7 +38,11 @@ operator-chart:
 		deploy/cluster-operator \
 		--set crds.create=true
 
-deploy: .id deploy/cluster.yaml generate operator-chart operator-chart operator-todo
+tmp/values.yaml:
+	sed "s/latest/$(GIT_COMMIT)/g" deploy/cluster-operator/values.yaml > $@
+
+helm-deploy: tmp/values.yaml
+	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
 
 deploy-local: .id deploy/cluster.yaml generate kops operator-crds operator-todo
 
@@ -52,6 +61,14 @@ cluster: deploy/cluster.yaml
 	# TODO: make our own namespaces
 	kubectl create ns `cat .id` || true
 	kubectl apply -f deploy/cluster.yaml
+
+image: .image-$(GIT_COMMIT)
+
+push: image
+	docker push $(REGISTRY)/$(IMAGE_REPO):$(GIT_COMMIT)
+
+.image-$(GIT_COMMIT):
+	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(GIT_COMMIT)" .
 
 status:
 	kubectl -n `cat .id` describe cluster example-cluster

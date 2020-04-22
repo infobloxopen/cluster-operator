@@ -22,4 +22,4 @@ spec:
   secretName: infobloxctokey
   secrets:
     config: VAULT
-  type: k8s.io/dockerconfigjson
+  type: kubernetes.io/dockerconfigjson
