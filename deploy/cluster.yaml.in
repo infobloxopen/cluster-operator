@@ -41,7 +41,7 @@ spec:
       kubernetesVersion: 1.16.7
       masterPublicName: api.{{ .Name }}.soheil.belamaric.com
       networkCIDR: 172.17.16.0/21
-      networkID: vpc-08897028adadc9b1f
+      networkID: vpc-0a75b33895655b46a
       networking:
         kubenet: {}
       nonMasqueradeCIDR: 100.64.0.0/10
