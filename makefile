@@ -6,6 +6,7 @@ export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
 OPERATOR_SDK_VERSION := v0.15.2
 KOPS_VERSION := v1.16.0
+export KOPS_PATH ?= ".bin/kops"
 
 .id:
 	git config user.email | awk -F@ '{print $$1}' > .id
@@ -17,12 +18,12 @@ KOPS_VERSION := v1.16.0
 
 operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 
-.bin/kops:
+${KOPS_PATH}:
 	mkdir -p .bin
 	curl --fail -Lo $@ https://github.com/kubernetes/kops/releases/download/${KOPS_VERSION}/kops-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64
 	chmod +x $@
 
-kops: .bin/kops
+kops: ${KOPS_PATH}
 
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
 	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
