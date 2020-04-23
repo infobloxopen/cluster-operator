@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: {{ include "cluster-operator.fullname" . }}
   namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "cluster-operator.labels" . | indent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -15,7 +17,7 @@ spec:
         app.kubernetes.io/name: {{ include "cluster-operator.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
-      serviceAccountName: cluster-operator
+      serviceAccountName: {{ include "cluster-operator.fullname" . }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"

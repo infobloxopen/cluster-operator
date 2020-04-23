@@ -4,6 +4,9 @@
 
 replicaCount: 1
 
+crds:
+  create: true
+
 image:
   repository: infobloxcto/cluster-operator
   tag: latest

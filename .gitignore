@@ -2,7 +2,7 @@
 .id
 deploy/cluster.yaml
 .bin/
-
+build/manager
 
 .idea
 tmp
