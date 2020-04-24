@@ -7,7 +7,7 @@ export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 REGISTRY      := infoblox
 IMAGE_REPO    := cluster-operator
 GIT_COMMIT 	  := $(shell git describe --tags --always || echo pre-commit)
-NAMESPACE	  ?= default
+NAMESPACE	  ?= operator
 IMAGE         ?= $(GIT_COMMIT)
 
 OPERATOR_SDK_VERSION := v0.15.2
