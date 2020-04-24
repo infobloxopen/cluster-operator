@@ -4,7 +4,7 @@ export AWS_REGION		     ?= $(shell aws configure get region)
 export CLUSTER_OPERATOR_DEVELOPMENT ?= true
 export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
-REGISTRY      := infobloxcto
+REGISTRY      := infoblox
 IMAGE_REPO    := cluster-operator
 GIT_COMMIT 	  := $(shell git describe --tags --always || echo pre-commit)
 NAMESPACE	  ?= default

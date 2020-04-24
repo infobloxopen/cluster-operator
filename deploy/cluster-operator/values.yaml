@@ -8,7 +8,7 @@ crds:
   create: true
 
 image:
-  repository: infobloxcto/cluster-operator
+  repository: infoblox/cluster-operator
   tag: latest
 
 nameOverride: ""
