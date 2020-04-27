@@ -61,13 +61,14 @@ cluster: deploy/cluster.yaml
 	kubectl create ns `cat .id` || true
 	kubectl apply -f deploy/cluster.yaml
 
-image: .image-$(GIT_COMMIT)
+.image-$(IMAGE):
+	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(IMAGE)" .
+
+image: .image-$(IMAGE)
 
 push: image
-	docker push $(REGISTRY)/$(IMAGE_REPO):$(GIT_COMMIT)
+	docker push $(REGISTRY)/$(IMAGE_REPO):$(IMAGE)
 
-.image-$(GIT_COMMIT):
-	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(GIT_COMMIT)" .
 
 status:
 	kubectl -n `cat .id` describe cluster example-cluster

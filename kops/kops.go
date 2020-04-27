@@ -20,27 +20,39 @@ type KopsCmd struct {
 }
 
 func NewKops() (*KopsCmd, error) {
+	// FIXME - Integrate public key function into the envs
+	var k KopsCmd
+
+	devMode := utils.GetEnvs([]string{"CLUSTER_OPERATOR_DEVELOPMENT"})
+	if len(devMode) > 0 {
+		k.devMode = true
+	}
+
 	reqEnvs := []string{
 		"AWS_ACCESS_KEY_ID",
 		"AWS_SECRET_ACCESS_KEY",
 		"KOPS_STATE_STORE",
 	}
+
+	if !k.devMode {
+		reqEnvs = []string{
+			"KOPS_STATE_STORE",
+		}
+	}
+
 	filterEnvs := append([]string{
 		"SSH_KEY",
-		"CLUSTER_OPERATOR_DEVELOPMENT",
 	}, reqEnvs[0:]...)
 
-	// FIXME - Integrate public key function into the envs
-	k := KopsCmd{
+	k = KopsCmd{
 		publicKey: "kops.pub",
 		envs:      utils.GetEnvs(filterEnvs),
 		path:      utils.GetEnvs([]string{"KOPS_PATH"})[0][1],
+		devMode:   k.devMode,
 	}
 
 	for _, pair := range k.envs {
-		if pair[0] == "CLUSTER_OPERATOR_DEVELOPMENT" {
-			k.devMode = true
-		} else if (pair[0] == "SSH_KEY") && (len(pair[1]) > 0) {
+		if (pair[0] == "SSH_KEY") && (len(pair[1]) > 0) {
 			k.publicKey = pair[1]
 		}
 	}
@@ -52,70 +64,11 @@ func NewKops() (*KopsCmd, error) {
 			foundEnvs = append(foundEnvs, e[0])
 		}
 		return &k, errors.New("Missing environment variables for Kops " + strings.Join(missingEnvs, ", ") +
-			" Found Envs" + strings.Join(foundEnvs, ", "))
+			" Found Envs " + strings.Join(foundEnvs, ", "))
 	}
 
 	return &k, nil
 }
-
-// CreateCluster provisions a new cluster
-//func (k *KopsCmd) CreateCluster(ctx context.Context, cluster clusteroperatorv1alpha1.KopsConfig) (*utils.Cmd, error) {
-//
-//	pwd, err := os.Getwd()
-//	if err != nil {
-//		return nil, err
-//	}
-//	kopsCmd := "./.bin/docker"
-//	kopsArgs := []string {"run"}
-//	kopsArgs = append(kopsArgs, utils.GetDockerEnvFlagss(k.envs)...)
-//	kopsArgs = append(kopsArgs,
-//		"-v " + pwd + "/ssh:/ssh",
-//		"soheileizadi/kops:v1.0",
-//		"--state=" + cluster.StateStore,
-//		"create cluster",
-//		"--name=" + cluster.Name,
-//		// FIXME - Should have ssh-key-name
-//		"--ssh-public-key=" + "/ssh/" + k.publicKey,
-//		"--vpc=" + cluster.Vpc,
-//		"--master-count=" + strconv.Itoa(cluster.MasterCount),
-//		"--master-size=" + cluster.MasterEc2,
-//		"--node-count=" + strconv.Itoa(cluster.WorkerCount),
-//		"--node-size=" + cluster.WorkerEc2,
-//		"--zones=" + strings.Join(cluster.Zones, ","))
-//
-//	fmt.Println("KOPS CMD ARGS--->>>>>>>>>")
-//	fmt.Println(kopsArgs)
-//	return utils.New(ctx, nil, kopsCmd, kopsArgs...), nil
-//}
-
-// No longer needed when using Kops Manifests
-// The flow when using Kops Manifests is always kops replace -> kops update
-// The flow applies for both new and existing clusters
-//func (k *KopsCmd) CreateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
-//
-//	pwd, err := os.Getwd()
-//	if err != nil {
-//		return err
-//	}
-//	kopsCmdStr := k.path +
-//		" create cluster" +
-//		" --state=" + cluster.StateStore +
-//		" --name=" + cluster.Name +
-//		// FIXME - Should have ssh-key-name
-//		" --ssh-public-key=" + "/ssh/" + k.publicKey +
-//		" --vpc=" + cluster.Vpc +
-//		" --master-count=" + strconv.Itoa(cluster.MasterCount) +
-//		" --master-size=" + cluster.MasterEc2 +
-//		" --node-count=" + strconv.Itoa(cluster.WorkerCount) +
-//		" --node-size=" + cluster.WorkerEc2 +
-//		" --zones=" + strings.Join(cluster.Zones, ",")
-//	err = utils.RunStreamingCmd(kopsCmdStr)
-//	if err != nil {
-//		return err
-//	}
-
-//	return nil
-//}
 
 func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) error {
 	tempConfigFile := cluster.Name + ".yaml"
