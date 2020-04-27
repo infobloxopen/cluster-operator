@@ -34,13 +34,17 @@ var log = logf.Log.WithName("controller_cluster")
 
 // Add creates a new Cluster Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(cfg ReconcilerConfig) error {
+	return add(cfg.Mgr, newReconciler(cfg))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileCluster{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+type ReconcilerConfig struct {
+	Mgr  manager.Manager
+	Reap bool
+}
+
+func newReconciler(cfg ReconcilerConfig) reconcile.Reconciler {
+	return &ReconcileCluster{client: cfg.Mgr.GetClient(), scheme: cfg.Mgr.GetScheme(), reap: cfg.Reap}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -94,6 +98,7 @@ type ReconcileCluster struct {
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
+	reap   bool
 }
 
 // Reconcile reads that state of the cluster for a Cluster object and makes changes based on the state read
@@ -138,8 +143,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
 			// The following routine will remove any clusters from the state store that are not in etcd
 			// This will run whenever a cluster is created on the state store its beeing created in
-			reaper := []string{"REAPER"}
-			if utils.GetEnvs(reaper)[0][1] == "true" {
+			if r.reap == true {
 				//get all clusters in etcd (grabbing only from namespace operator is working in, see fix me)
 				etcdClusters := &clusteroperatorv1alpha1.ClusterList{}
 				err = r.client.List(context.Background(), etcdClusters)
@@ -176,8 +180,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 					reqLogger.Info("Clusters found in state store (" + instance.Spec.KopsConfig.StateStore + ") that are not in etcd")
 					for _, cluster := range badClusters {
 						reqLogger.Info("Deleting cluster " + cluster)
-						// tempKopsConfig := clusteroperatorv1alpha1.KopsConfig{StateStore: instance.Spec.KopsConfig.StateStore, Name: cluster}
-						// err := k.DeleteCluster(tempKopsConfig)
+						tempKopsConfig := clusteroperatorv1alpha1.KopsConfig{StateStore: instance.Spec.KopsConfig.StateStore, Name: cluster}
+						err := k.DeleteCluster(tempKopsConfig)
 						if err != nil {
 							reqLogger.Error(err, "Cannot delete cluster from stat store")
 							return reconcile.Result{}, err
