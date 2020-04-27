@@ -377,9 +377,3 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 
 	return defaultConfig
 }
-
-// func checkStateStore() {
-
-// 	//get cluster in json form
-
-// }
