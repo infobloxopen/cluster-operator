@@ -27,6 +27,8 @@ spec:
             value: {{ .Values.operatorName  }}
           - name: KOPS_STATE_STORE
             value: {{ .Values.stateStore }}
+          - name: REAPER
+            value: "{{ .Values.reaper }}"
           - name: POD_NAME
             valueFrom:
               fieldRef:

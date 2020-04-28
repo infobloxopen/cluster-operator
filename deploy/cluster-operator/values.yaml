@@ -11,6 +11,8 @@ image:
   repository: infoblox/cluster-operator
   tag: latest
 
+reaper: false
+
 nameOverride: ""
 fullnameOverride: ""
 
