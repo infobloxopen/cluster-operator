@@ -122,7 +122,6 @@ func main() {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-
 	// Add the Metrics Service
 	addMetrics(ctx, cfg, namespace)
 

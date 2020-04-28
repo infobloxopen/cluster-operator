@@ -229,6 +229,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			return reconcile.Result{}, err
 		}
 
+		reqLogger.Info("Cluster Updated")
+
 		//get kubeconfig
 		var mode os.FileMode = 509
 		err = os.MkdirAll("./tmp", mode)
@@ -256,12 +258,17 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		//TODO: Right now, using defaults for intervals. Need to make changable
 		// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
 		// We call rolling-update to apply these changes
-		err = k.RollingUpdateCluster(kc)
-		if err != nil {
-			reqLogger.Error(err, "error performing rolling update on cluster")
-			return reconcile.Result{}, err
+		if instance.Status.Validated {
+			err = k.RollingUpdateCluster(kc)
+			if err != nil {
+				reqLogger.Error(err, "error performing rolling update on cluster")
+				return reconcile.Result{}, err
+			}
+			reqLogger.Info("Rolling Update Complete")
+		} else {
+			reqLogger.Info("Cluster not validated yet... Skipping rolling update for now")
 		}
-		reqLogger.Info("Cluster Updated")
+
 		instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
@@ -277,11 +284,16 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		instance.Status.KopsStatus = clusteroperatorv1alpha1.KopsStatus{}
 		if err != nil {
 			reqLogger.Info("Cluster Not Ready")
+			instance.Status.Validated = false
+			if err := r.client.Status().Update(context.TODO(), instance); err != nil {
+				return reconcile.Result{}, err
+			}
 			// instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 		} else if len(status.Nodes) > 0 {
 			instance.Status.KopsStatus.Nodes = status.Nodes
 			reqLogger.Info("Cluster Created")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
+			instance.Status.Validated = true
 			reqLogger.Info("Phase: DONE")
 			if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 				return reconcile.Result{}, err

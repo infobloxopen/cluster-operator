@@ -5,7 +5,15 @@ export CLUSTER_OPERATOR_DEVELOPMENT ?= true
 export REAPER ?= false
 export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
+REGISTRY      := infoblox
+IMAGE_REPO    := cluster-operator
+GIT_COMMIT 	  := $(shell git describe --tags --always || echo pre-commit)
+NAMESPACE	  ?= operator
+IMAGE         ?= $(GIT_COMMIT)
+
 OPERATOR_SDK_VERSION := v0.15.2
+KOPS_VERSION := v1.16.0
+export KOPS_PATH ?= ".bin/kops"	
 
 .id:
 	git config user.email | awk -F@ '{print $$1}' > .id
@@ -17,6 +25,13 @@ OPERATOR_SDK_VERSION := v0.15.2
 
 operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 
+$(KOPS_PATH):
+	mkdir -p .bin
+	curl --fail -Lo $@ https://github.com/kubernetes/kops/releases/download/${KOPS_VERSION}/kops-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64
+	chmod +x $@
+
+kops: $(KOPS_PATH)
+
 deploy/cluster.yaml: .id deploy/cluster.yaml.in
 	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
 
@@ -25,9 +40,11 @@ operator-chart:
 		deploy/cluster-operator \
 		--set crds.create=true
 
-deploy: .id deploy/cluster.yaml generate operator-chart operator-chart operator-todo
+helm-deploy: 
+	sed "s/latest/$(IMAGE)/g" deploy/cluster-operator/values.yaml > tmp/values.yaml
+	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
 
-deploy-local: .id deploy/cluster.yaml generate operator-crds operator-todo
+deploy-local: .id deploy/cluster.yaml generate kops operator-crds operator-todo
 
 operator-crds:
 	kubectl apply -f deploy/cluster-operator/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
@@ -44,6 +61,15 @@ cluster: deploy/cluster.yaml
 	# TODO: make our own namespaces
 	kubectl create ns `cat .id` || true
 	kubectl apply -f deploy/cluster.yaml
+
+.image-$(IMAGE):
+	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(IMAGE)" .
+
+image: .image-$(IMAGE)
+
+push: image
+	docker push $(REGISTRY)/$(IMAGE_REPO):$(IMAGE)
+
 
 status:
 	kubectl -n `cat .id` describe cluster example-cluster
