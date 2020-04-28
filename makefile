@@ -2,6 +2,7 @@ export AWS_ACCESS_KEY_ID	 ?= $(shell aws configure get aws_access_key_id)
 export AWS_SECRET_ACCESS_KEY ?= $(shell aws configure get aws_secret_access_key)
 export AWS_REGION		     ?= $(shell aws configure get region)
 export CLUSTER_OPERATOR_DEVELOPMENT ?= true
+export REAPER ?= false
 export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
 REGISTRY      := infoblox
