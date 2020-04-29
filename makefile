@@ -48,7 +48,7 @@ helm-deploy:
 	sed "s/latest/$(IMAGE)/g" deploy/cluster-operator/values.yaml > tmp/values.yaml
 	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
 
-deploy-local: .id deploy/cluster.yaml generate operator-crds operator-todo
+deploy-local: .id deploy/cluster.yaml kops generate operator-crds operator-todo
 
 operator-crds:
 	kubectl apply -f deploy/cluster-operator/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
