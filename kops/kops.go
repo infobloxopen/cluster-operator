@@ -108,6 +108,7 @@ func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) er
 		viper.GetString("kops.container") +
 		" replace cluster" +
 		" -f " + viper.GetString("kops.kube.dir") + "/" + tempConfigFile +
+		// FIXME Do we want to use state.store or cluster.StateStore
 		" --state=" + viper.GetString("kops.state.store") +
 		" --force"
 
@@ -128,7 +129,7 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		utils.GetDockerEnvFlags() +
 		viper.GetString("kops.container") +
 		" update cluster " +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
@@ -145,12 +146,12 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 }
 
 func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, error) {
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := viper.GetString("docker.bin.path") +
+		" run" +
+		utils.GetDockerEnvFlags() +
+		viper.GetString("kops.container") +
 		" get cluster " +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --name=" + cluster.Name
 	exists := true
 	err := utils.RunStreamingCmd(kopsCmd)
@@ -181,7 +182,7 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		" -v " + viper.GetString("tmp.dir") + ":" + viper.GetString("kops.kube.dir") +
 		viper.GetString("kops.container") +
 		" rolling-update cluster " +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --name=" + cluster.Name +
 		//FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
@@ -296,22 +297,14 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		viper.GetString("kops.container") +
 		" --state=" + cluster.StateStore +
 		" export kubecfg --name=" + cluster.Name +
-<<<<<<< HEAD
 		" --kubeconfig=" + viper.GetString("kops.kube.dir") + "/config.yaml"
-=======
-		" --kubeconfig=/tmp/config-" + cluster.Name
->>>>>>> upstream/master
 
 	err := k.runStreamingCmd(kopsCmd)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
-<<<<<<< HEAD
 	file, err := ioutil.ReadFile(viper.GetString("tmp.dir") + "/config.yaml")
-=======
-	file, err := ioutil.ReadFile("tmp/config+-" + cluster.Name)
->>>>>>> upstream/master
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
