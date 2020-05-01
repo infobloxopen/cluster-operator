@@ -17,6 +17,7 @@ import (
 	"github.com/infobloxopen/cluster-operator/pkg/controller"
 	"github.com/infobloxopen/cluster-operator/pkg/controller/cluster"
 	"github.com/infobloxopen/cluster-operator/version"
+	"github.com/infobloxopen/cluster-operator/pkg/clustervalidator"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -70,6 +71,15 @@ func main() {
 	logf.SetLogger(zap.Logger())
 
 	printVersion()
+
+	log.Info("Starting Validating Webhook Server...")
+
+	nsac := clustervalidator.ClusterAdmission{}
+	// TODO: hardcoded path and port number, can be pulled from env vars
+	s := clustervalidator.GetAdmissionValidationServer(&nsac, "/run/secrets/tls/tls.crt", "/run/secrets/tls/tls.key", "0.0.0.0:8443")	
+	go func() {
+		s.ListenAndServeTLS("", "")
+    }()
 
 	namespace, err := k8sutil.GetWatchNamespace()
 	if err != nil {
