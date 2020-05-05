@@ -29,20 +29,28 @@ type AdmissionControllerServer struct {
 }
 
 func (acs *AdmissionControllerServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var body []byte
-	if data, err := ioutil.ReadAll(r.Body); err == nil {
-		body = data
-	}
-	review := &v1beta1.AdmissionReview{}
-	_, _, err := acs.Decoder.Decode(body, nil, review)
+	body, err := ioutil.ReadAll(r.Body);
 	if err != nil {
-		log.Error(err, "Failed to decode AdmissionReview request.")
+		log.Error(err, "Failed to read AdmissionReview request body.")
 	}
+    defer r.Body.Close()
+
+	review := &v1beta1.AdmissionReview{}
+	if _, _, err = acs.Decoder.Decode(body, nil, review); err != nil {
+		log.Error(err, "Failed to decode AdmissionReview request.")
+		return
+	}
+
 	acs.AdmissionController.HandleAdmission(review)
 	responseInBytes, err := json.Marshal(review)
+	if err != nil {
+		log.Error(err, "Failed to write AdmissionReview response.")
+		return
+	}
 
 	if _, err := w.Write(responseInBytes); err != nil {
 		log.Error(err, "Failed to write AdmissionReview response.")
+		return
 	}
 }
 
@@ -58,14 +66,14 @@ func GetAdmissionServerNoSSL(ac AdmissionController, listenOn string) *http.Serv
 	return server
 }
 
-func GetAdmissionValidationServer(ac AdmissionController, tlsCert, tlsKey, listenOn string) *http.Server {
+func GetAdmissionValidationServer(ac AdmissionController, tlsCert, tlsKey, listenOn string) (*http.Server, error) {
 	sCert, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+	if err != nil {
+		return nil, err
+	}
 	server := GetAdmissionServerNoSSL(ac, listenOn)
 	server.TLSConfig = &tls.Config{
 		Certificates: []tls.Certificate{sCert},
 	}
-	if err != nil {
-		log.Error(err, "Failed to load TLS key pair.")
-	}
-	return server
+	return server, nil
 }
