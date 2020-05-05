@@ -21,7 +21,7 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: Never
+          imagePullPolicy: Always
           ports:
           - containerPort: 8443
             name: webhook-api
