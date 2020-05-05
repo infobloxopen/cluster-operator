@@ -1,0 +1,24 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: "{{ .Release.Name }}-cluster-validator"
+  labels:
+{{ include "cluster-operator.labels" . | indent 4 }}
+  annotations:
+    cert-manager.io/inject-apiserver-ca: "true"
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ .Release.Name }}-webhook-server-tls
+webhooks:
+- name: "{{ .Release.Name }}-cluster-validator.{{ .Release.Namespace }}.svc"
+  rules:
+  - apiGroups:   ["cluster-operator.infobloxopen.github.com"]
+    apiVersions: ["v1alpha1"]
+    operations:  ["UPDATE", "CREATE"]
+    resources:   ["clusters"]
+    scope:       "Namespaced"
+  clientConfig:
+    service:
+      namespace: {{ .Release.Namespace }}
+      name: {{ .Release.Name }}-cluster-validator
+  admissionReviewVersions: ["v1beta1"]
+  timeoutSeconds: 5
+  sideEffects: None

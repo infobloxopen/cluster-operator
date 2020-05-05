@@ -21,12 +21,12 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: Always
+          imagePullPolicy: Never
           ports:
           - containerPort: 8443
             name: webhook-api
           volumeMounts:
-          - name: webhook-tls-certs
+          - name: webhook-server-tls
             mountPath: /run/secrets/tls
             readOnly: true
           env:
@@ -47,9 +47,9 @@ spec:
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
-        - name: webhook-tls-certs
+        - name: webhook-server-tls
           secret:
-            secretName: webhook-server-tls
+            secretName: {{ .Release.Name }}-webhook-server-tls
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
