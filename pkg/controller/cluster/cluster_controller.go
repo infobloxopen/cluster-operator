@@ -35,13 +35,17 @@ var log = logf.Log.WithName("controller_cluster")
 
 // Add creates a new Cluster Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+func Add(cfg ReconcilerConfig) error {
+	return add(cfg.Mgr, newReconciler(cfg))
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileCluster{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+type ReconcilerConfig struct {
+	Mgr  manager.Manager
+	Reap bool
+}
+
+func newReconciler(cfg ReconcilerConfig) reconcile.Reconciler {
+	return &ReconcileCluster{client: cfg.Mgr.GetClient(), scheme: cfg.Mgr.GetScheme(), reap: cfg.Reap}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -95,6 +99,7 @@ type ReconcileCluster struct {
 	// that reads objects from the cache and writes to the apiserver
 	client client.Client
 	scheme *runtime.Scheme
+	reap   bool
 }
 
 // Reconcile reads that state of the cluster for a Cluster object and makes changes based on the state read
@@ -136,11 +141,59 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 
 		// If no phase set default to pending for the initial phase
 		if instance.Status.Phase == "" {
+			instance.Spec.KopsConfig = CheckKopsDefaultConfig(instance.Spec)
+			// The following routine will remove any clusters from the state store that are not in etcd
+			// This will run whenever a cluster is created on the state store its beeing created in
+			if r.reap == true {
+				//get all clusters in etcd (grabbing only from namespace operator is working in, see fix me)
+				etcdClusters := &clusteroperatorv1alpha1.ClusterList{}
+				err = r.client.List(context.Background(), etcdClusters)
+				if err != nil {
+					log.Error(err, "Error getting list of clusters")
+					os.Exit(1)
+				}
+
+				// List clusters in current state store
+				ssClusters, err := k.ListClusters(instance.Spec.KopsConfig.StateStore)
+				if err != nil {
+					reqLogger.Error(err, "Cannot list clusters")
+					return reconcile.Result{}, err
+				}
+
+				var badClusters []string
+
+				// FIXME This is banking off the fact that the operator only looks for clusters in one
+				// namespace. If that is changed, we need to take into account that the cluster we are looking for
+				// may exist in etcd, just in a different namespace. Need to look into if this will break or not
+				for _, s := range ssClusters {
+					found := false
+					for _, e := range etcdClusters.Items {
+						if s == e.Spec.KopsConfig.Name {
+							found = true
+						}
+					}
+					if !found {
+						badClusters = append(badClusters, s)
+					}
+				}
+
+				if badClusters != nil {
+					reqLogger.Info("Clusters found in state store (" + instance.Spec.KopsConfig.StateStore + ") that are not in etcd")
+					for _, cluster := range badClusters {
+						reqLogger.Info("Deleting cluster " + cluster)
+						tempKopsConfig := clusteroperatorv1alpha1.KopsConfig{StateStore: instance.Spec.KopsConfig.StateStore, Name: cluster}
+						err := k.DeleteCluster(tempKopsConfig)
+						if err != nil {
+							reqLogger.Error(err, "Cannot delete cluster from stat store")
+							return reconcile.Result{}, err
+						}
+					}
+
+				}
+			}
+
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 			instance.Spec.KopsConfig = kc
-			if err := r.client.Update(context.TODO(), instance); err != nil {
-				return reconcile.Result{}, err
-			}
 		}
 		// Add the finalizer and update the object
 		if !utils.Contains(instance.ObjectMeta.Finalizers, clusterFinalizer) {
@@ -177,6 +230,8 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			return reconcile.Result{}, err
 		}
 
+		reqLogger.Info("Cluster Updated")
+
 		//get kubeconfig
 		var mode os.FileMode = 509
 		err = os.MkdirAll("./tmp", mode)
@@ -204,12 +259,17 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		//TODO: Right now, using defaults for intervals. Need to make changable
 		// Some changes will require rebuilding the nodes (for example, resizing nodes or changing the AMI)
 		// We call rolling-update to apply these changes
-		err = k.RollingUpdateCluster(kc)
-		if err != nil {
-			reqLogger.Error(err, "error performing rolling update on cluster")
-			return reconcile.Result{}, err
+		if instance.Status.Validated {
+			err = k.RollingUpdateCluster(kc)
+			if err != nil {
+				reqLogger.Error(err, "error performing rolling update on cluster")
+				return reconcile.Result{}, err
+			}
+			reqLogger.Info("Rolling Update Complete")
+		} else {
+			reqLogger.Info("Cluster not validated yet... Skipping rolling update for now")
 		}
-		reqLogger.Info("Cluster Updated")
+
 		instance.Status.Phase = clusteroperatorv1alpha1.ClusterSetup
 		if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, err
@@ -225,11 +285,16 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 		instance.Status.KopsStatus = clusteroperatorv1alpha1.KopsStatus{}
 		if err != nil {
 			reqLogger.Info("Cluster Not Ready")
+			instance.Status.Validated = false
+			if err := r.client.Status().Update(context.TODO(), instance); err != nil {
+				return reconcile.Result{}, err
+			}
 			// instance.Status.Phase = clusteroperatorv1alpha1.ClusterPending
 		} else if len(status.Nodes) > 0 {
 			instance.Status.KopsStatus.Nodes = status.Nodes
 			reqLogger.Info("Cluster Created")
 			instance.Status.Phase = clusteroperatorv1alpha1.ClusterDone
+			instance.Status.Validated = true
 			reqLogger.Info("Phase: DONE")
 			if err := r.client.Status().Update(context.TODO(), instance); err != nil {
 				return reconcile.Result{}, err

@@ -14,6 +14,7 @@ const (
 	defaultSSHKey             = "kops.pub"
 	defaultKopsContainer = "soheileizadi/kops:v1.0"
 	defaultKopsKubeDir = "/kube"
+	defaultKopsPath = ".bin/kops"
 
 	//Docker
 	defaultDockerBinPath = "/usr/local/bin/docker"
@@ -37,6 +38,9 @@ const (
 
 	// Development Flag
 	defaultClusterOperatorDevelopment bool = false
+
+	//Reaper
+	defaultReaper bool = false
 )
 
 var (
@@ -49,6 +53,7 @@ var (
 	flagSSHKey             = pflag.String("kops.ssh.key", defaultSSHKey, "kops ssh key")
 	flagKopsContainer = pflag.String("kops.container", defaultKopsContainer, "kops container")
 	flagKopsKubeDir  = pflag.String("kops.kube.dir", defaultKopsKubeDir, "kops kube directory")
+	flagKopsPath = pflag.String("kops.path", defaultKopsPath, "kops path")
 
 	//Docker
 	flagDockerBinPath = pflag.String("docker.bin.path", defaultDockerBinPath, "docker bin path")
@@ -69,4 +74,7 @@ var (
 
 	// Developement Flag so eliminate Cloud interaction and speedup local developement
 	flagClusterOperatorDevelopment = pflag.Bool("development", defaultClusterOperatorDevelopment, "cluster operator development")
+
+	//Reaper
+	flagReaper = pflag.Bool("reaper", defaultReaper, "reaper value")
 )

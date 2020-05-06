@@ -45,33 +45,7 @@ func TestCreateCluster(t *testing.T) {
 	k.runStreamingCmd = mockRunStreamingCmd
 	k.runCmd = mockRunCmd
 
-	//values := []testCase{
-	//	{"/usr/local/bin/docker", false},
-	//	{"run", false},
-	//	{ "-e", false},
-	//	{ "key1=value1", false},
-	//	{ "key2=value2", false},
-	//	{"create", false},
-	//	{"cluster", false},
-	//	{"--name=" + kopsConfig.Name, false},
-	//	{"--state=" + kopsConfig.StateStore, false},
-	//	{"--ssh-public-key=" + k.publicKey, false},
-	//	{"--vpc=" + kopsConfig.Vpc, false},
-	//	{"--master-count=" + strconv.Itoa(kopsConfig.MasterCount), false},
-	//	{"--master-size=" + kopsConfig.MasterEc2, false},
-	//	{"--node-count=" + strconv.Itoa(kopsConfig.WorkerCount), false},
-	//	{"--node-size=" + kopsConfig.WorkerEc2, false},
-	//	{"--zones=" + strings.Join(kopsConfig.Zones, ","), false},
-	//}
-
 	values := []testCase{
-		{"run", false},
-		{"-v", false},
-		{"/TestCluster.yaml:/TestCluster.yaml", false},
-		{"-e", false},
-		{"AWS_ACCESS_KEY_ID=-e", false},
-		{"AWS_SECRET_ACCESS_KEY=-e", false},
-		{"KOPS_STATE_STORE=", false},
 		{"replace", false},
 		{"cluster", false},
 		{"-f", false},

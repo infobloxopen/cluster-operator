@@ -8,6 +8,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/infobloxopen/cluster-operator/pkg/apis"
 	"github.com/infobloxopen/cluster-operator/pkg/controller"
+	"github.com/infobloxopen/cluster-operator/pkg/controller/cluster"
 	"github.com/infobloxopen/cluster-operator/version"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
@@ -76,6 +78,7 @@ func init() {
 		}
 	}
 
+	// FIXME: need to figure out how to check to make sure the AWS keys and secret are present
 	// Check to see if the required configuration arguments are present
 	if len(viper.GetString("aws.access.key.id")) == 0 {
 		log.Error(errors.New("AWS_ACCESS_KEY_ID not configured"), "Missing Argument AWS_ACCESS_KEY_ID")
@@ -115,8 +118,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	//Get reaper bool, set to false if not there
+	var rec cluster.ReconcilerConfig
+	rec.Reap, err = strconv.ParseBool(viper.GetString("reaper"))
+	if err != nil {
+		rec.Reap = false
+	}
+
 	// Create a new Cmd to provide shared dependencies and start components
-	mgr, err := manager.New(cfg, manager.Options{
+	rec.Mgr, err = manager.New(cfg, manager.Options{
 		Namespace:          namespace,
 		MetricsBindAddress: fmt.Sprintf("%s:%d", viper.GetString("metrics.host"), viper.GetInt32("metrics.port")),
 	})
@@ -128,24 +138,23 @@ func main() {
 	log.Info("Registering Components.")
 
 	// Setup Scheme for all resources
-	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
+	if err := apis.AddToScheme(rec.Mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
 
 	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	if err := controller.AddToManager(rec); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}
-
 	// Add the Metrics Service
 	addMetrics(ctx, cfg, namespace)
 
 	log.Info("Starting the Cmd.")
 
 	// Start the Cmd
-	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
+	if err := rec.Mgr.Start(signals.SetupSignalHandler()); err != nil {
 		log.Error(err, "Manager exited non-zero")
 		os.Exit(1)
 	}

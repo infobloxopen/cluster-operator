@@ -16,6 +16,8 @@ spec:
       authorization:
         rbac: {}
       channel: stable
+      cloudLabels:
+        Protected: "FALSE"
       cloudProvider: aws
       configBase: s3://kops.state.seizadi.infoblox.com/{{ .Name }}.soheil.belamaric.com
       etcdClusters:
