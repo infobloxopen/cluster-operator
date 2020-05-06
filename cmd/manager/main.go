@@ -78,13 +78,14 @@ func init() {
 		}
 	}
 
-	// FIXME: need to figure out how to check to make sure the AWS keys and secret are present
-	// Check to see if the required configuration arguments are present
-	if len(viper.GetString("aws.access.key.id")) == 0 {
-		log.Error(errors.New("AWS_ACCESS_KEY_ID not configured"), "Missing Argument AWS_ACCESS_KEY_ID")
-	}
-	if len(viper.GetString("aws.secret.access.key")) == 0 {
-		log.Error(errors.New("AWS_SECRET_ACCESS_KEY not configured"), "Missing Argument AWS_SECRET_ACCESS_KEY")
+	if(viper.GetBool("development")) == true {
+		// Check to see if the required configuration arguments are present
+		if len(viper.GetString("aws.access.key.id")) == 0 {
+			log.Error(errors.New("AWS_ACCESS_KEY_ID not configured"), "Missing Argument AWS_ACCESS_KEY_ID")
+		}
+		if len(viper.GetString("aws.secret.access.key")) == 0 {
+			log.Error(errors.New("AWS_SECRET_ACCESS_KEY not configured"), "Missing Argument AWS_SECRET_ACCESS_KEY")
+		}
 	}
 	if len(viper.GetString("kops.state.store")) == 0 {
 		log.Error(errors.New("KOPS_STATE_STORE not configured"), "Missing Argument KOPS_STATE_STORE")
