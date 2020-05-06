@@ -44,7 +44,20 @@ helm-deploy:
 	sed "s/latest/$(IMAGE)/g" deploy/cluster-operator/values.yaml > tmp/values.yaml
 	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
 
-deploy-local: .id deploy/cluster.yaml generate kops operator-crds operator-todo
+namespace:
+	kubectl create ns $(NAMESPACE)
+
+cert-manager: 
+	kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.14.3/cert-manager.yaml
+
+docker-local:
+	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(IMAGE)" .
+	kind load docker-image infoblox/cluster-operator:$(IMAGE)
+
+deploy-local: docker-local cert-manager
+	sed "s/latest/$(IMAGE)/g; s/Always/Never/g; s/local:\ false/local:\ true/g;" deploy/cluster-operator/values.yaml > tmp/values.yaml
+	sed -i '' "/^ *aws:/,/^ *[^:]*:/s/secretKey:\ dummy/secretKey:\ $(AWS_SECRET_ACCESS_KEY)/g; s/keyID:\ dummy/keyID:\ $(AWS_ACCESS_KEY_ID)/g; s/region:\ us-east-1/region:\ $(AWS_REGION)/g;" tmp/values.yaml
+	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
 
 operator-crds:
 	kubectl apply -f deploy/cluster-operator/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
@@ -69,7 +82,6 @@ image: .image-$(IMAGE)
 
 push: image
 	docker push $(REGISTRY)/$(IMAGE_REPO):$(IMAGE)
-
 
 status:
 	kubectl -n `cat .id` describe cluster example-cluster

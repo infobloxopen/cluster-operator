@@ -21,7 +21,7 @@ spec:
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: Always
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
           - containerPort: 8443
             name: webhook-api
@@ -44,6 +44,14 @@ spec:
             valueFrom:
               fieldRef:
                 fieldPath: metadata.namespace
+          {{- if .Values.local }}
+          - name: AWS_SECRET_ACCESS_KEY
+            value: {{ .Values.aws.secretKey  }}
+          - name: AWS_ACCESS_KEY_ID
+            value: {{ .Values.aws.keyID }}
+          - name: AWS_REGION
+            value: {{ .Values.aws.region }}
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
