@@ -58,7 +58,7 @@ docker-local:
 	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(IMAGE)" .
 	kind load docker-image infoblox/cluster-operator:$(IMAGE)
 
-deploy-local: docker-local cert-manager
+deploy-local: cert-manager
 	sed "s/latest/$(IMAGE)/g; s/Always/Never/g; s/local:\ false/local:\ true/g;" deploy/cluster-operator/values.yaml > tmp/values.yaml
 	sed -i '' "/^ *aws:/,/^ *[^:]*:/s/secretKey:\ dummy/secretKey:\ $(AWS_SECRET_ACCESS_KEY)/g; s/keyID:\ dummy/keyID:\ $(AWS_ACCESS_KEY_ID)/g; s/region:\ us-east-1/region:\ $(AWS_REGION)/g;" tmp/values.yaml
 	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
