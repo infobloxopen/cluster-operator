@@ -76,7 +76,12 @@ func main() {
 
 	nsac := clustervalidator.ClusterAdmission{}
 	// TODO: hardcoded path and port number, can be pulled from env vars
-	s := clustervalidator.GetAdmissionValidationServer(&nsac, "/run/secrets/tls/tls.crt", "/run/secrets/tls/tls.key", "0.0.0.0:8443")	
+	s, err := clustervalidator.GetAdmissionValidationServer(&nsac, "/run/secrets/tls/tls.crt", "/run/secrets/tls/tls.key", "0.0.0.0:8443")
+	if err != nil {
+		log.Error(err, "Failed to create admission validation server.")
+		os.Exit(1)
+	}
+
 	go func() {
 		s.ListenAndServeTLS("", "")
     }()

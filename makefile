@@ -13,22 +13,26 @@ IMAGE         ?= $(GIT_COMMIT)
 
 OPERATOR_SDK_VERSION := v0.15.2
 KOPS_VERSION := v1.16.0
-export KOPS_PATH ?= ".bin/kops"	
+export KOPS_PATH ?=".bin/kops"
 
 .id:
 	git config user.email | awk -F@ '{print $$1}' > .id
 
 .bin/operator-sdk-$(OPERATOR_SDK_VERSION):
-	mkdir -p .bin
-	curl --fail -Lo $@ https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-$(shell uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/apple-darwin/' | sed 's/linux/linux-gnu/')
-	chmod +x $@
+	if [[ ! -f .bin/operator-sdk-$(OPERATOR_SDK_VERSION) ]]; then \
+		mkdir -p .bin; \
+		curl --fail -Lo $@ https://github.com/operator-framework/operator-sdk/releases/download/${OPERATOR_SDK_VERSION}/operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-$(shell uname -s | tr '[:upper:]' '[:lower:]' | sed 's/darwin/apple-darwin/' | sed 's/linux/linux-gnu/'); \
+		chmod +x $@; \
+	fi
 
 operator-sdk: .bin/operator-sdk-$(OPERATOR_SDK_VERSION)
 
 $(KOPS_PATH):
-	mkdir -p .bin
-	curl --fail -Lo $@ https://github.com/kubernetes/kops/releases/download/${KOPS_VERSION}/kops-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64
-	chmod +x $@
+	if [[ ! -f $(KOPS_PATH) ]]; then \
+		mkdir -p .bin; \
+		curl --fail -Lo $@ https://github.com/kubernetes/kops/releases/download/${KOPS_VERSION}/kops-$(shell uname -s | tr '[:upper:]' '[:lower:]')-amd64; \
+		chmod +x $@; \
+	fi
 
 kops: $(KOPS_PATH)
 

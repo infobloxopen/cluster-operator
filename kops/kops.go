@@ -132,9 +132,9 @@ func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, 
 
 func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
-	// if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
-	// 	return nil
-	// }
+	if k.devMode { // Dry-run in Dev Mode and skip Update Cluster
+		return nil
+	}
 
 	// Make sure we have config in tmp/config.yaml
 	_, err := k.GetKubeConfig(cluster)
@@ -252,7 +252,7 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		" export kubecfg" +
 		" --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
-		" --kubeconfig=/tmp/config-" + cluster.Name
+		" --kubeconfig=tmp/config-" + cluster.Name
 
 	err := utils.RunStreamingCmd(kopsCmd)
 	if err != nil {
