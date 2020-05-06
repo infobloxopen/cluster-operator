@@ -6,7 +6,7 @@ metadata:
 {{ include "cluster-operator.labels" . | indent 4 }}
   annotations:
     cert-manager.io/inject-apiserver-ca: "true"
-    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ .Release.Name }}-webhook-server-tls
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ .Release.Name }}-webhook-selfsigned-tls
 webhooks:
 - name: "{{ .Release.Name }}-cluster-validator.{{ .Release.Namespace }}.svc"
   rules:
