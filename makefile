@@ -56,7 +56,7 @@ cert-manager:
 
 docker-local:
 	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(IMAGE)" .
-	kind load docker-image infoblox/cluster-operator:$(IMAGE)
+	kind load docker-image $(REGISTRY)/$(IMAGE_REPO):$(IMAGE)
 
 deploy-local: cert-manager
 	sed "s/latest/$(IMAGE)/g; s/Always/Never/g; s/local:\ false/local:\ true/g;" deploy/cluster-operator/values.yaml > tmp/values.yaml
