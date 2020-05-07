@@ -273,10 +273,7 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 }
 
 func (k *KopsCmd) ListClusters(stateStore string) ([]string, error) {
-	kopsCmd := "/usr/local/bin/" +
-		"docker run" +
-		utils.GetDockerEnvFlags(k.envs) +
-		" soheileizadi/kops:v1.0" +
+	kopsCmd := k.path +
 		" get cluster " +
 		" --state=" + stateStore +
 		" -o json | jq -r '.[][\"metadata\"][\"name\"]'"
