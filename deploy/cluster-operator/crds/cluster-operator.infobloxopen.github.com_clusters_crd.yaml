@@ -51,5 +51,13 @@ spec:
                   type: string
                   default: "IGNORE FOR NOW"
             status:
-              description: ClusterStatus defines the observed state of Cluster 
               type: object
+              properties:
+                phase:
+                  type: string
+                kubeConfig:
+                  type: object
+                validate:
+                  type: boolean
+                kopsStatus:
+                  type: object

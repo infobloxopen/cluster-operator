@@ -136,6 +136,7 @@ const (
 
 // ClusterStatus defines the observed state of Cluster
 // +k8s:openapi-gen=true
+// +kubebuilder:subresource:status
 type ClusterStatus struct {
 	// Phase represents the state of the cluster provisioning
 	// It transitions from PENDING to DONE, we might add more states for infrastructure provisioning
@@ -149,7 +150,6 @@ type ClusterStatus struct {
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // Cluster is the Schema for the clusters API
-// +kubebuilder:subresource:status
 // +kubebuilder:resource:path=clusters,scope=Namespaced
 // +k8s:openapi-gen=true
 type Cluster struct {
