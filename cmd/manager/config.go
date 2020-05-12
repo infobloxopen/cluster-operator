@@ -13,7 +13,7 @@ const (
 	defaultKopsClusterDnsZone = "soheil.belamaric.com"
 	defaultSSHKey             = "kops.pub"
 	defaultKopsContainer = "soheileizadi/kops:v1.0"
-	defaultKopsKubeDir = "/kube"
+	defaultKopsKubeDir = "kube"
 	defaultKopsPath = ".bin/kops"
 
 	//Docker

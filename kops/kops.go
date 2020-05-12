@@ -41,7 +41,7 @@ func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) er
 
 	kopsCmdStr := k.path +
 		" replace cluster" +
-		" -f " + viper.GetString("kops.kube.dir") + "/" + tempConfigFile +
+		" -f ." + viper.GetString("kops.kube.dir") + "/" + tempConfigFile +
 		" --state=" + viper.GetString("kops.state.store") +
 		" --force"
 
@@ -214,14 +214,14 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		" export kubecfg" +
 		" --name=" + cluster.Name +
 		" --state=" + cluster.StateStore +
-		" --kubeconfig=tmp/config-" + cluster.Name
+		" --kubeconfig=" +  viper.GetString("tmp.dir") + "/config-" + cluster.Name
 
 	err := utils.RunStreamingCmd(kopsCmdStr)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
-	file, err := ioutil.ReadFile(viper.GetString("tmp.dir") + "config-" + cluster.Name)
+	file, err := ioutil.ReadFile(viper.GetString("tmp.dir") + "/config-" + cluster.Name)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
