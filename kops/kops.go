@@ -213,13 +213,8 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 	kopsCmdStr := k.path +
 		" export kubecfg" +
 		" --name=" + cluster.Name +
-<<<<<<< HEAD
-		" --state=" + cluster.StateStore +
-		" --kubeconfig=tmp/config-" + cluster.Name
-=======
 		" --state=" + viper.GetString("kops.state.store") +
 		" --kubeconfig=" +  viper.GetString("tmp.dir") + "/config-" + cluster.Name
->>>>>>> master
 
 	err := k.runStreamingCmd(kopsCmdStr)
 	if err != nil {
