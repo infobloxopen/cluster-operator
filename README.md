@@ -66,10 +66,17 @@ SSH_KEY - Override the default public key built into the operator for public key
 
 #### Initial Setup
 ```bash
-kind create cluster
+kind create cluster --config deploy/cert.yaml
 ```
-
-Build and Run
+Build docker image locally and pass to kind cluster
+```bash
+make docker-local
+```
+Setup cert-manager on kind cluster
+```bash
+make cert-manager
+```
+Deploy oeprator
 ```bash
 make deploy-local
 ```
@@ -90,10 +97,13 @@ If you stop and make changes and rerun controller:
 make operator-todo
 ```
 ### Cluster Testing
-Assuming you have minikube or a cluster with helm tiller you can run
-Build and Run
+Build docker image and push to repo
 ```bash
-make deploy
+make push
+```
+Deploy to Kubernetes cluster
+```bash
+make helm-deploy
 ```
 You can use the other targets to create, check status or delete
 ```bash

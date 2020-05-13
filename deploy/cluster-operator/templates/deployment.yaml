@@ -56,7 +56,7 @@ spec:
           {{- end }}
           command: ["/bin/sh"]
           {{- if .Values.local }}
-          args: ["-c", "/manager --development=false --kops.state.store=$KOPS_STATE_STORE --reaper=$REAPER --kops.cluster.dns.zone=$DNS_ZONE --aws.access.key.id=AWS_ACCESS_KEY_ID --aws.secret.access.key=AWS_SECRET_ACCESS_KEY"]
+          args: ["-c", "/manager --development=false --kops.state.store=$KOPS_STATE_STORE --reaper=$REAPER --kops.cluster.dns.zone=$DNS_ZONE --aws.access.key.id=$AWS_ACCESS_KEY_ID --aws.secret.access.key=$AWS_SECRET_ACCESS_KEY"]
           {{- else }}
           args: ["-c", "/manager --development=false --kops.state.store=$KOPS_STATE_STORE --reaper=$REAPER --kops.cluster.dns.zone=$DNS_ZONE"]
           {{- end }}

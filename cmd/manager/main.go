@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"strings"
 	"strconv"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -26,6 +27,7 @@ import (
 	"github.com/operator-framework/operator-sdk/pkg/metrics"
 	sdkVersion "github.com/operator-framework/operator-sdk/version"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -34,12 +36,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
-// Change below variables to serve metrics on different host or port.
-var (
-	metricsHost               = "0.0.0.0"
-	metricsPort         int32 = 8383
-	operatorMetricsPort int32 = 8686
-)
 var log = logf.Log.WithName("cmd")
 
 func printVersion() {
@@ -49,7 +45,7 @@ func printVersion() {
 	log.Info(fmt.Sprintf("Version of operator-sdk: %v", sdkVersion.Version))
 }
 
-func main() {
+func init() {
 	// Add the zap logger flag set to the CLI. The flag set must
 	// be added before calling pflag.Parse().
 	pflag.CommandLine.AddFlagSet(zap.FlagSet())
@@ -70,6 +66,37 @@ func main() {
 	// uniform and structured logs.
 	logf.SetLogger(zap.Logger())
 
+	viper.BindPFlags(pflag.CommandLine)
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix(appEnvPrefix)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AddConfigPath(viper.GetString("config.source"))
+	if viper.GetString("config.file") != "" {
+		viper.SetConfigName(viper.GetString("config.file"))
+		if err := viper.ReadInConfig(); err != nil {
+			//log.Fatalf("cannot load configuration: %v", err)
+			log.Error(err, "cannot load configuration")
+		}
+	}
+
+	if(viper.GetBool("development")) == true {
+		// Check to see if the required configuration arguments are present
+		if len(viper.GetString("aws.access.key.id")) == 0 {
+			log.Error(errors.New("AWS_ACCESS_KEY_ID not configured"), "Missing Argument AWS_ACCESS_KEY_ID")
+		}
+		if len(viper.GetString("aws.secret.access.key")) == 0 {
+			log.Error(errors.New("AWS_SECRET_ACCESS_KEY not configured"), "Missing Argument AWS_SECRET_ACCESS_KEY")
+		}
+	}
+	if len(viper.GetString("kops.state.store")) == 0 {
+		log.Error(errors.New("KOPS_STATE_STORE not configured"), "Missing Argument KOPS_STATE_STORE")
+	}
+	if len(viper.GetString("kops.cluster.dns.zone")) == 0 {
+		log.Error(errors.New("KOPS_CLUSTER_DNS_ZONE not configured"), "Missing Argument KOPS_CLUSTER_DNS_ZONE")
+	}
+}
+
+func main() {
 	printVersion()
 
 	log.Info("Starting Validating Webhook Server...")
@@ -109,7 +136,7 @@ func main() {
 
 	//Get reaper bool, set to false if not there
 	var rec cluster.ReconcilerConfig
-	rec.Reap, err = strconv.ParseBool(os.Getenv("REAPER"))
+	rec.Reap, err = strconv.ParseBool(viper.GetString("reaper"))
 	if err != nil {
 		rec.Reap = false
 	}
@@ -117,7 +144,7 @@ func main() {
 	// Create a new Cmd to provide shared dependencies and start components
 	rec.Mgr, err = manager.New(cfg, manager.Options{
 		Namespace:          namespace,
-		MetricsBindAddress: fmt.Sprintf("%s:%d", metricsHost, metricsPort),
+		MetricsBindAddress: fmt.Sprintf("%s:%d", viper.GetString("metrics.host"), viper.GetInt32("metrics.port")),
 	})
 	if err != nil {
 		log.Error(err, "")
@@ -162,8 +189,8 @@ func addMetrics(ctx context.Context, cfg *rest.Config, namespace string) {
 
 	// Add to the below struct any other metrics ports you want to expose.
 	servicePorts := []v1.ServicePort{
-		{Port: metricsPort, Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: metricsPort}},
-		{Port: operatorMetricsPort, Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: operatorMetricsPort}},
+		{Port: viper.GetInt32("metrics.port"), Name: metrics.OperatorPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: viper.GetInt32("metrics.port")}},
+		{Port: viper.GetInt32("operator.metrics.port"), Name: metrics.CRPortName, Protocol: v1.ProtocolTCP, TargetPort: intstr.IntOrString{Type: intstr.Int, IntVal: viper.GetInt32("operator.metrics.port")}},
 	}
 
 	// Create Service object to expose the metrics port(s).
@@ -203,7 +230,7 @@ func serveCRMetrics(cfg *rest.Config) error {
 	// To generate metrics in other namespaces, add the values below.
 	ns := []string{operatorNs}
 	// Generate and serve custom resource specific metrics.
-	err = kubemetrics.GenerateAndServeCRMetrics(cfg, ns, filteredGVK, metricsHost, operatorMetricsPort)
+	err = kubemetrics.GenerateAndServeCRMetrics(cfg, ns, filteredGVK, viper.GetString("metrics.host"), viper.GetInt32("operator.metrics.port"))
 	if err != nil {
 		return err
 	}

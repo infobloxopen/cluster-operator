@@ -1,3 +1,5 @@
+.kube
+kops/TestCluster.yaml
 .env
 .id
 deploy/cluster.yaml

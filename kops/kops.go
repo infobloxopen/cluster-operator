@@ -1,70 +1,33 @@
 package kops
 
 import (
+	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"strings"
 
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	"github.com/infobloxopen/cluster-operator/utils"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v2"
 )
 
 type KopsCmd struct {
-	devMode   bool
-	publicKey string
-	envs      [][]string
-	path      string
+	devMode         bool
+	publicKey       string
+	runStreamingCmd func(string) error
+	runCmd          func(string) (*bytes.Buffer, error)
+	path            string
 }
 
 func NewKops() (*KopsCmd, error) {
-	// FIXME - Integrate public key function into the envs
-	var k KopsCmd
-
-	devMode := utils.GetEnvs([]string{"CLUSTER_OPERATOR_DEVELOPMENT"})
-	if len(devMode) > 0 {
-		k.devMode = true
-	}
-
-	reqEnvs := []string{
-		"AWS_ACCESS_KEY_ID",
-		"AWS_SECRET_ACCESS_KEY",
-		"KOPS_STATE_STORE",
-	}
-
-	if !k.devMode {
-		reqEnvs = []string{
-			"KOPS_STATE_STORE",
-		}
-	}
-
-	filterEnvs := append([]string{
-		"SSH_KEY",
-	}, reqEnvs[0:]...)
-
-	k = KopsCmd{
-		publicKey: "kops.pub",
-		envs:      utils.GetEnvs(filterEnvs),
-		path:      utils.GetEnvs([]string{"KOPS_PATH"})[0][1],
-		devMode:   k.devMode,
-	}
-
-	for _, pair := range k.envs {
-		if (pair[0] == "SSH_KEY") && (len(pair[1]) > 0) {
-			k.publicKey = pair[1]
-		}
-	}
-
-	missingEnvs := utils.CheckEnvs(k.envs, reqEnvs)
-	if len(missingEnvs) > 0 {
-		foundEnvs := []string{}
-		for _, e := range k.envs {
-			foundEnvs = append(foundEnvs, e[0])
-		}
-		return &k, errors.New("Missing environment variables for Kops " + strings.Join(missingEnvs, ", ") +
-			" Found Envs " + strings.Join(foundEnvs, ", "))
+	k := KopsCmd{
+		publicKey:       viper.GetString("kops.ssh.key"),
+		devMode:         viper.GetBool("development"),
+		runStreamingCmd: utils.RunStreamingCmd,
+		runCmd:          utils.RunCmd,
+		path:            viper.GetString("kops.path"),
 	}
 
 	return &k, nil
@@ -79,11 +42,11 @@ func (k *KopsCmd) ReplaceCluster(cluster clusteroperatorv1alpha1.ClusterSpec) er
 
 	kopsCmdStr := k.path +
 		" replace cluster" +
-		" -f tmp/" + tempConfigFile +
-		" --state=" + cluster.KopsConfig.StateStore +
+		" -f ." + viper.GetString("kops.kube.dir") + "/" + tempConfigFile +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --force"
 
-	err = utils.RunStreamingCmd(kopsCmdStr)
+	err = k.runStreamingCmd(kopsCmdStr)
 	if err != nil {
 		return err
 	}
@@ -96,9 +59,9 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		return nil
 	}
 
-	kopsCmd := k.path +
+	kopsCmdStr := k.path +
 		" update cluster " +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --name=" + cluster.Name +
 		// FIXME - Add in when we switch to kops config
 		// https://github.com/kubernetes/kops/blob/master/docs/iam_roles.md#use-existing-aws-instance-profiles
@@ -106,7 +69,7 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
-	err := utils.RunStreamingCmd(kopsCmd)
+	err := k.runStreamingCmd(kopsCmdStr)
 	if err != nil {
 		return err
 	}
@@ -115,12 +78,12 @@ func (k *KopsCmd) UpdateCluster(cluster clusteroperatorv1alpha1.KopsConfig) erro
 }
 
 func (k *KopsCmd) GetCluster(cluster clusteroperatorv1alpha1.KopsConfig) (bool, error) {
-	kopsCmd := k.path +
+	kopsCmdStr := k.path +
 		" get cluster " +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --name=" + cluster.Name
 	exists := true
-	err := utils.RunStreamingCmd(kopsCmd)
+	err := k.runStreamingCmd(kopsCmdStr)
 	if err != nil {
 		if strings.Contains(err.Error(), "exit status 1") {
 			exists = false
@@ -142,9 +105,9 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		return err
 	}
 
-	kopsCmd := k.path +
+	kopsCmdStr := k.path +
 		" rolling-update cluster " +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --name=" + cluster.Name +
 		" --fail-on-validate-error=false" +
 		// FIXME - Add in when we switch to kops config
@@ -153,7 +116,7 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 		// "IAMRolePolicy=ExistsAndWarnIfChanges,IAMInstanceProfileRole=ExistsAndWarnIfChanges" +
 		" --yes"
 
-	err = utils.RunStreamingCmd(kopsCmd)
+	err = k.runStreamingCmd(kopsCmdStr)
 	if err != nil {
 		return err
 	}
@@ -163,13 +126,13 @@ func (k *KopsCmd) RollingUpdateCluster(cluster clusteroperatorv1alpha1.KopsConfi
 
 func (k *KopsCmd) DeleteCluster(cluster clusteroperatorv1alpha1.KopsConfig) error {
 
-	kopsCmd := k.path +
+	kopsCmdStr := k.path +
 		" delete cluster --name=" + cluster.Name +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --yes"
 
 	//out, err := utils.RunCmd(kopsCmd)
-	err := utils.RunStreamingCmd(kopsCmd)
+	err := k.runStreamingCmd(kopsCmdStr)
 	if err != nil {
 		return err
 	}
@@ -222,11 +185,11 @@ func (k *KopsCmd) ValidateCluster(cluster clusteroperatorv1alpha1.KopsConfig) (c
 		return status, err
 	}
 
-	kopsCmd := k.path +
+	kopsCmdStr := k.path +
 		" validate cluster" +
-		" --state=" + cluster.StateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" --name=" + cluster.Name + " -o json"
-	out, err := utils.RunCmd(kopsCmd)
+	out, err := k.runCmd(kopsCmdStr)
 	if err != nil {
 		return status, err
 	}
@@ -248,18 +211,18 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 
 	config := clusteroperatorv1alpha1.KubeConfig{}
 
-	kopsCmd := k.path +
+	kopsCmdStr := k.path +
 		" export kubecfg" +
 		" --name=" + cluster.Name +
-		" --state=" + cluster.StateStore +
-		" --kubeconfig=tmp/config-" + cluster.Name
+		" --state=" + viper.GetString("kops.state.store") +
+		" --kubeconfig=" + viper.GetString("tmp.dir") + "/config-" + cluster.Name
 
-	err := utils.RunStreamingCmd(kopsCmd)
+	err := k.runStreamingCmd(kopsCmdStr)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
 
-	file, err := ioutil.ReadFile("tmp/config-" + cluster.Name)
+	file, err := ioutil.ReadFile(viper.GetString("tmp.dir") + "/config-" + cluster.Name)
 	if err != nil {
 		return clusteroperatorv1alpha1.KubeConfig{}, err
 	}
@@ -273,12 +236,12 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 }
 
 func (k *KopsCmd) ListClusters(stateStore string) ([]string, error) {
-	kopsCmd := k.path +
+	kopsCmdStr := k.path +
 		" get cluster " +
-		" --state=" + stateStore +
+		" --state=" + viper.GetString("kops.state.store") +
 		" -o json | jq -r '.[][\"metadata\"][\"name\"]'"
 
-	out, err := utils.RunCmd(kopsCmd)
+	out, err := k.runCmd(kopsCmdStr)
 	if err != nil {
 		return nil, err
 	}

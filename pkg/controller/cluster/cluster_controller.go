@@ -5,6 +5,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 
@@ -319,7 +321,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			reqLogger.WithValues("error", err).Info("Error getting cluster")
 			return reconcile.Result{}, err
 		} else {
-			err = k.DeleteCluster(instance.Spec.KopsConfig)
+			err = k.DeleteCluster(kc)
 			if err != nil {
 				//error deleting cluster
 				return reconcile.Result{}, err
@@ -351,14 +353,12 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 
 	// Due to changes to use Kops manifests, the only required fields are Name and StateStore
 	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
-		// FIXME - Pickup DNS zone from Operator Config
-		Name: c.Name + ".soheil.belamaric.com",
+		Name:       c.Name + "." + viper.GetString("kops.cluster.dns.zone"),
+		StateStore: viper.GetString("kops.state.store"),
 		// MasterCount: 1,
 		// MasterEc2:   "t2.micro",
 		// WorkerCount: 2,
 		// WorkerEc2:   "t2.micro",
-		// FIXME - Pickup state store from Operator Config
-		StateStore: "s3://kops.state.seizadi.infoblox.com",
 		// Vpc:         "vpc-0a75b33895655b46a",
 		// Zones:       []string{"us-east-2a", "us-east-2b"},
 	}
