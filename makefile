@@ -1,9 +1,9 @@
-export AWS_ACCESS_KEY_ID	 ?= $(shell aws configure get aws_access_key_id)
-export AWS_SECRET_ACCESS_KEY ?= $(shell aws configure get aws_secret_access_key)
-export AWS_REGION		     ?= $(shell aws configure get region)
+export CLUSTER_OPERATOR_AWS_ACCESS_KEY_ID	 ?= $(shell aws configure get aws_access_key_id)
+export CLUSTER_OPERATOR_AWS_SECRET_ACCESS_KEY ?= $(shell aws configure get aws_secret_access_key)
+export CLUSTER_OPERATOR_KOPS_STATE_STORE = s3://kops.state.seizadi.infoblox.com
 export CLUSTER_OPERATOR_DEVELOPMENT ?= true
-export REAPER ?= false
-export KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
+export CLUSTER_OPERATOR_REAPER ?= false
+export CLUSTER_OPERATOR_KOPS_CLUSTER_DNS_ZONE ?= soheil.belamaric.com
 
 REGISTRY      := infoblox
 IMAGE_REPO    := cluster-operator
