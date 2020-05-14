@@ -1,8 +1,6 @@
 export CLUSTER_OPERATOR_AWS_ACCESS_KEY_ID	 ?= $(shell aws configure get aws_access_key_id)
 export CLUSTER_OPERATOR_AWS_SECRET_ACCESS_KEY ?= $(shell aws configure get aws_secret_access_key)
-
-export AWS_ACCESS_KEY_ID	 = $(shell aws configure get aws_access_key_id | sed 's/\//\\\//g')
-export AWS_SECRET_ACCESS_KEY = $(shell aws configure get aws_secret_access_key | sed 's/\//\\\//g')
+export CLUSTER_OPERATOR_AWS_REGION ?= us-east-2
 
 export CLUSTER_OPERATOR_KOPS_STATE_STORE = s3://kops.state.seizadi.infoblox.com
 export CLUSTER_OPERATOR_DEVELOPMENT ?= true
@@ -61,9 +59,9 @@ docker-local:
 	kind load docker-image $(REGISTRY)/$(IMAGE_REPO):$(IMAGE)
 
 deploy-local: namespace
-	sed "s/latest/$(IMAGE)/g; s/Always/Never/g; s/local:\ false/local:\ true/g;" deploy/cluster-operator/values.yaml > tmp/values.yaml
-	sed -i '' "/^ *aws:/,/^ *[^:]*:/s/secretKey:\ dummy/secretKey:\ $(AWS_SECRET_ACCESS_KEY)/g; s/keyID:\ dummy/keyID:\ $(AWS_ACCESS_KEY_ID)/g; s/region:\ us-east-1/region:\ $(AWS_REGION)/g;" tmp/values.yaml
-	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
+	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml \
+	--set image.tag=$(IMAGE) --set image.pullPolicy=Never --set local=true --set aws.secretKey=$(CLUSTER_OPERATOR_AWS_SECRET_ACCESS_KEY) \
+	--set aws.keyID=$(CLUSTER_OPERATOR_AWS_ACCESS_KEY_ID) --set aws.region=$(CLUSTER_OPERATOR_AWS_REGION)| kubectl apply -f -
 
 operator-crds:
 	kubectl apply -f deploy/cluster-operator/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
