@@ -38,6 +38,8 @@ $(KOPS_PATH):
 
 kops: $(KOPS_PATH)
 
+kind:
+	kind create cluster --config deploy/kind-config.yaml
 
 operator-chart:
 	helm upgrade -i `cat .id`-cluster-operator --namespace `cat .id` \

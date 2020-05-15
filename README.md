@@ -65,8 +65,9 @@ SSH_KEY - Override the default public key built into the operator for public key
 ### Local Testing
 
 #### Initial Setup
+Create kind cluster
 ```bash
-kind create cluster --config deploy/cert.yaml
+make kind
 ```
 Build docker image locally and pass to kind cluster
 ```bash
