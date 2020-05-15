@@ -4,12 +4,22 @@
 
 replicaCount: 1
 
+local: false
+
+aws:
+  secretKey: dummy
+  keyID: dummy
+  region: us-east-1
+
+dnsZone: soheil.belamaric.com
+
 crds:
   create: true
 
 image:
   repository: infoblox/cluster-operator
   tag: latest
+  pullPolicy: Always
 
 reaper: false
 

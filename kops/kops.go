@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"strings"
+
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
 	"github.com/infobloxopen/cluster-operator/utils"
 	"github.com/spf13/viper"
@@ -17,7 +18,7 @@ type KopsCmd struct {
 	publicKey       string
 	runStreamingCmd func(string) error
 	runCmd          func(string) (*bytes.Buffer, error)
-	path string
+	path            string
 }
 
 func NewKops() (*KopsCmd, error) {
@@ -26,7 +27,7 @@ func NewKops() (*KopsCmd, error) {
 		devMode:         viper.GetBool("development"),
 		runStreamingCmd: utils.RunStreamingCmd,
 		runCmd:          utils.RunCmd,
-		path: viper.GetString("kops.path"),
+		path:            viper.GetString("kops.path"),
 	}
 
 	return &k, nil
@@ -214,7 +215,7 @@ func (k *KopsCmd) GetKubeConfig(cluster clusteroperatorv1alpha1.KopsConfig) (clu
 		" export kubecfg" +
 		" --name=" + cluster.Name +
 		" --state=" + viper.GetString("kops.state.store") +
-		" --kubeconfig=" +  viper.GetString("tmp.dir") + "/config-" + cluster.Name
+		" --kubeconfig=" + viper.GetString("tmp.dir") + "/config-" + cluster.Name
 
 	err := k.runStreamingCmd(kopsCmdStr)
 	if err != nil {

@@ -2,9 +2,10 @@ package cluster
 
 import (
 	"context"
-	"github.com/spf13/viper"
 	"os"
 	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/infobloxopen/cluster-operator/kops"
 	clusteroperatorv1alpha1 "github.com/infobloxopen/cluster-operator/pkg/apis/clusteroperator/v1alpha1"
@@ -320,7 +321,7 @@ func (r *ReconcileCluster) Reconcile(request reconcile.Request) (reconcile.Resul
 			reqLogger.WithValues("error", err).Info("Error getting cluster")
 			return reconcile.Result{}, err
 		} else {
-			err = k.DeleteCluster(instance.Spec.KopsConfig)
+			err = k.DeleteCluster(kc)
 			if err != nil {
 				//error deleting cluster
 				return reconcile.Result{}, err
@@ -352,8 +353,8 @@ func CheckKopsDefaultConfig(c clusteroperatorv1alpha1.ClusterSpec) clusteroperat
 
 	// Due to changes to use Kops manifests, the only required fields are Name and StateStore
 	defaultConfig := clusteroperatorv1alpha1.KopsConfig{
-		Name:        c.Name + "." + viper.GetString("kops.cluster.dns.zone"),
-		StateStore:  viper.GetString("kops.state.store"),
+		Name:       c.Name + "." + viper.GetString("kops.cluster.dns.zone"),
+		StateStore: viper.GetString("kops.state.store"),
 		// MasterCount: 1,
 		// MasterEc2:   "t2.micro",
 		// WorkerCount: 2,

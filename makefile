@@ -1,5 +1,7 @@
 export CLUSTER_OPERATOR_AWS_ACCESS_KEY_ID	 ?= $(shell aws configure get aws_access_key_id)
 export CLUSTER_OPERATOR_AWS_SECRET_ACCESS_KEY ?= $(shell aws configure get aws_secret_access_key)
+export CLUSTER_OPERATOR_AWS_REGION ?= us-east-2
+
 export CLUSTER_OPERATOR_KOPS_STATE_STORE = s3://kops.state.seizadi.infoblox.com
 export CLUSTER_OPERATOR_DEVELOPMENT ?= true
 export CLUSTER_OPERATOR_REAPER ?= false
@@ -36,8 +38,8 @@ $(KOPS_PATH):
 
 kops: $(KOPS_PATH)
 
-deploy/cluster.yaml: .id deploy/cluster.yaml.in
-	sed "s/{{ .Name }}/`cat .id`/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
+kind:
+	kind create cluster --config deploy/kind-config.yaml
 
 operator-chart:
 	helm upgrade -i `cat .id`-cluster-operator --namespace `cat .id` \
@@ -48,7 +50,20 @@ helm-deploy:
 	sed "s/latest/$(IMAGE)/g" deploy/cluster-operator/values.yaml > tmp/values.yaml
 	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml | kubectl apply -f -
 
-deploy-local: .id deploy/cluster.yaml kops generate operator-crds operator-todo
+namespace:
+	kubectl create ns $(NAMESPACE) || true
+
+cert-manager: 
+	kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.14.3/cert-manager.yaml
+
+docker-local:
+	docker build -t="$(REGISTRY)/$(IMAGE_REPO):$(IMAGE)" .
+	kind load docker-image $(REGISTRY)/$(IMAGE_REPO):$(IMAGE)
+
+deploy-local: namespace
+	helm template deploy/cluster-operator/. --name phase-1 --namespace $(NAMESPACE) operator -f tmp/values.yaml \
+	--set image.tag=$(IMAGE) --set image.pullPolicy=Never --set local=true --set aws.secretKey=$(CLUSTER_OPERATOR_AWS_SECRET_ACCESS_KEY) \
+	--set aws.keyID=$(CLUSTER_OPERATOR_AWS_ACCESS_KEY_ID) --set aws.region=$(CLUSTER_OPERATOR_AWS_REGION)| kubectl apply -f -
 
 operator-crds:
 	kubectl apply -f deploy/cluster-operator/crds/cluster-operator.infobloxopen.github.com_clusters_crd.yaml
@@ -61,9 +76,11 @@ operator-debug: .id operator-sdk
 	# TODO: move operator-sdk into chart
 	OPERATOR_NAME=clusterop .bin/operator-sdk-$(OPERATOR_SDK_VERSION) run --local --namespace `cat .id` --enable-delve
 
-cluster: deploy/cluster.yaml
-	# TODO: make our own namespaces
-	kubectl create ns `cat .id` || true
+
+deploy/cluster.yaml: .id deploy/cluster.yaml.in
+	sed "s/{{ .Name }}/$(NAMESPACE)/g; s#{{ .sshKey }}#`cat ./ssh/kops.pub`#g" deploy/cluster.yaml.in > $@
+
+cluster: deploy/cluster.yaml namespace
 	kubectl apply -f deploy/cluster.yaml
 
 .image-$(IMAGE):
@@ -74,12 +91,11 @@ image: .image-$(IMAGE)
 push: image
 	docker push $(REGISTRY)/$(IMAGE_REPO):$(IMAGE)
 
-
 status:
-	kubectl -n `cat .id` describe cluster example-cluster
+	kubectl -n $(NAMESPACE) describe cluster example-cluster
 
 delete:
-	kubectl -n `cat .id` delete cluster example-cluster
+	kubectl -n $(NAMESPACE) delete cluster example-cluster
 
 generate:
 	operator-sdk generate k8s # codegen

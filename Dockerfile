@@ -35,5 +35,3 @@ ADD https://storage.googleapis.com/kubernetes-release/release/${KUBECTL_VERSION}
 RUN chmod +x .bin/kops /usr/local/bin/kubectl
 
 RUN chmod +x /manager
-
-ENTRYPOINT ["/manager"]
