@@ -120,8 +120,8 @@ spec:
     master_count: 1
     master_ec2: t2.micro
     name: seizadi.soheil.belamaric.com
-    state_store: s3://kops.state.seizadi.infoblox.com
-    vpc: vpc-0a75b33895655b46a
+    state_store: s3://kops.state.seizadi.example.com
+    vpc: vpc-0axxxxxxxxxxxxx
     worker_count: 2
     worker_ec2: t2.micro
     zones:
@@ -200,14 +200,14 @@ export AWS_DEFAULT_REGION=us-east-2
 Kops settings
 ```bash
 export KOPS_CLUSTER_NAME=seizadi.soheil.belamaric.com
-export KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com
-export VPC_ID=vpc-0a75b33895655b46a
-export INTERNET_GATEWAY_ID=igw-047d4259cab6b99d2
+export KOPS_STATE_STORE=s3://kops.state.seizadi.example.com
+export VPC_ID=vpc-0a0axxxxxxxxxxxxx
+export INTERNET_GATEWAY_ID=igw-040axxxxxxxxxxxxx
 ```
 
 For now need to create the S3 state storage:
 ```bash
-$ aws s3 cb kops.state.seizadi.infoblox.com
+$ aws s3 cb kops.state.seizadi.example.com
 ```
 
 Create VPC
@@ -223,7 +223,7 @@ aws ec2 attach-internet-gateway --internet-gateway-id ${INTERNET_GATEWAY_ID} --v
 ```bash
 kops update cluster \
 --name=seizadi.soheil.belamaric.com \
---state=s3://kops.state.seizadi.infoblox.com \
+--state=s3://kops.state.seizadi.example.com \
 --ssh-public-key=kops.pub \
 --vpc=${VPC_ID} \
 --master-count 1 \
@@ -240,7 +240,7 @@ kops update cluster --yes
 ```
 Then to check the status:
 ```bash
-kops validate cluster --state=s3://kops.state.seizadi.infoblox.com --name=seizadi.soheil.belamaric.com -o json
+kops validate cluster --state=s3://kops.state.seizadi.example.com --name=seizadi.soheil.belamaric.com -o json
 ```
 ```json
 {
@@ -297,9 +297,9 @@ docker run \
  -e AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
  -e AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
  -e KOPS_CLUSTER_NAME=cluster1.soheil.belamaric.com \
- -e KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com \
+ -e KOPS_STATE_STORE=s3://kops.state.seizadi.example.com \
  soheileizadi/kops:v1.0 create cluster \
- --vpc=vpc-0a75b33895655b46a \
+ --vpc=vpc-0a0axxxxxxxxxxxxx \
  --node-count=2 \
  --master-size=t2.micro \
  --node-size=t2.micro \
@@ -312,7 +312,7 @@ docker run \
  -e AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE \
  -e AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY \
  -e KOPS_CLUSTER_NAME=cluster1.soheil.belamaric.com \
- -e KOPS_STATE_STORE=s3://kops.state.seizadi.infoblox.com \
+ -e KOPS_STATE_STORE=s3://kops.state.seizadi.example.com \
  soheileizadi/kops:v1.0 validate cluster -o json
 ```
 
